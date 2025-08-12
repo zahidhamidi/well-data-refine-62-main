@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Drilling Engineering Design System - Professional color palette
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 210 40% 8%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 40% 8%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 40% 8%;
+
+    /* Primary: Deep drilling blue */
+    --primary: 210 100% 12%;
+    --primary-foreground: 210 20% 98%;
+    --primary-muted: 210 50% 25%;
+
+    /* Secondary: Professional gray-blue */
+    --secondary: 210 20% 92%;
+    --secondary-foreground: 210 40% 8%;
+
+    --muted: 210 20% 95%;
+    --muted-foreground: 210 20% 45%;
+
+    /* Accent: Engineering orange */
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --accent-muted: 25 85% 45%;
+
+    /* Success: Data quality green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142 50% 85%;
+
+    /* Warning: Alert yellow */
+    --warning: 45 93% 47%;
+    --warning-foreground: 0 0% 0%;
+    --warning-muted: 45 85% 85%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 20% 88%;
+    --input: 210 20% 95%;
+    --ring: 210 100% 12%;
+
+    /* Charts and data visualization */
+    --chart-1: 210 100% 12%;
+    --chart-2: 25 95% 53%;
+    --chart-3: 142 76% 36%;
+    --chart-4: 270 95% 40%;
+    --chart-5: 340 85% 47%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 12%), hsl(210 100% 20%));
+    --gradient-accent: linear-gradient(135deg, hsl(25 95% 53%), hsl(25 95% 60%));
+    --gradient-data: linear-gradient(180deg, hsl(210 20% 98%), hsl(210 20% 95%));
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 210 40% 8%;
+    --foreground: 210 20% 95%;
+
+    --card: 210 35% 12%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 210 35% 12%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 210 100% 60%;
+    --primary-foreground: 210 40% 8%;
+    --primary-muted: 210 80% 45%;
+
+    --secondary: 210 20% 20%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 210 20% 16%;
+    --muted-foreground: 210 20% 65%;
+
+    --accent: 25 95% 53%;
+    --accent-foreground: 0 0% 100%;
+    --accent-muted: 25 85% 45%;
+
+    --success: 142 76% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-muted: 142 30% 25%;
+
+    --warning: 45 93% 55%;
+    --warning-foreground: 0 0% 0%;
+    --warning-muted: 45 50% 25%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 210 20% 25%;
+    --input: 210 20% 16%;
+    --ring: 210 100% 60%;
+
+    --chart-1: 210 100% 60%;
+    --chart-2: 25 95% 60%;
+    --chart-3: 142 76% 50%;
+    --chart-4: 270 95% 55%;
+    --chart-5: 340 85% 55%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 60%), hsl(210 100% 70%));
+    --gradient-accent: linear-gradient(135deg, hsl(25 95% 53%), hsl(25 95% 60%));
+    --gradient-data: linear-gradient(180deg, hsl(210 35% 12%), hsl(210 20% 16%));
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
