@@ -41,7 +41,7 @@ const ConfigurationSidebar: React.FC<ConfigurationSidebarProps> = ({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Settings className="h-5 w-5" />
-          Decimation Configuration
+          Settings
         </CardTitle>
         <CardDescription>
           Configure decimation parameters and filters
@@ -73,7 +73,7 @@ const ConfigurationSidebar: React.FC<ConfigurationSidebarProps> = ({
             <p className="text-xs text-muted-foreground">
               {config.depthInterval === 0 
                 ? "Original data will be displayed" 
-                : `Data will be decimated every ${config.depthInterval} m/ft using median values`
+                : `Data will be decimated every ${config.depthInterval} m/ft using mean values`
               }
             </p>
           </div>

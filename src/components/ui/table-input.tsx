@@ -10,6 +10,7 @@ interface SectionData {
   startDepth: string;
   endDepth: string;
   holeDiameter: string;
+  mudType: string;
 }
 
 interface FormationData {
@@ -17,6 +18,7 @@ interface FormationData {
   startDepth: string;
   endDepth: string;
   formationName: string;
+  mudType: string;
 }
 
 interface TableInputProps {
@@ -29,13 +31,13 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
   const [sections, setSections] = useState<SectionData[]>(
     initialSections && initialSections.length > 0 
       ? initialSections 
-      : [{ id: '1', startDepth: '', endDepth: '', holeDiameter: '' }]
+      : [{ id: '1', startDepth: '', endDepth: '', holeDiameter: '', mudType: '' }]
   );
   
   const [formations, setFormations] = useState<FormationData[]>(
     initialFormations && initialFormations.length > 0 
       ? initialFormations 
-      : [{ id: '1', startDepth: '', endDepth: '', formationName: '' }]
+      : [{ id: '1', startDepth: '', endDepth: '', formationName: '', mudType: ''}]
   );
 
   const addSectionRow = () => {
@@ -43,7 +45,8 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
       id: Date.now().toString(),
       startDepth: '',
       endDepth: '',
-      holeDiameter: ''
+      holeDiameter: '',
+      mudType: ''
     };
     setSections([...sections, newSection]);
   };
@@ -53,7 +56,8 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
       id: Date.now().toString(),
       startDepth: '',
       endDepth: '',
-      formationName: ''
+      formationName: '',
+      mudType: ''
     };
     setFormations([...formations, newFormation]);
   };
@@ -89,23 +93,25 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
     
     if (type === 'section') {
       const newSections: SectionData[] = rows.map((row, index) => {
-        const [startDepth, endDepth, holeDiameter] = row.split('\t');
+        const [startDepth, endDepth, holeDiameter, mudType] = row.split('\t');
         return {
           id: `pasted-${Date.now()}-${index}`,
           startDepth: startDepth?.trim() || '',
           endDepth: endDepth?.trim() || '',
-          holeDiameter: holeDiameter?.trim() || ''
+          holeDiameter: holeDiameter?.trim() || '',
+          mudType: mudType?.trim() || ''
         };
       });
       setSections(newSections);
     } else {
       const newFormations: FormationData[] = rows.map((row, index) => {
-        const [startDepth, endDepth, formationName] = row.split('\t');
+        const [startDepth, endDepth, formationName, mudType] = row.split('\t');
         return {
           id: `pasted-${Date.now()}-${index}`,
           startDepth: startDepth?.trim() || '',
           endDepth: endDepth?.trim() || '',
-          formationName: formationName?.trim() || ''
+          formationName: formationName?.trim() || '',
+          mudType: mudType?.trim() || ''
         };
       });
       setFormations(newFormations);
@@ -133,6 +139,7 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
                   <TableHead className="w-[200px]">Start Depth</TableHead>
                   <TableHead className="w-[200px]">End Depth</TableHead>
                   <TableHead className="w-[200px]">Hole Diameter</TableHead>
+                  <TableHead className="w-[200px]">Mud Type</TableHead>
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -160,6 +167,14 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
                         placeholder="e.g., 24"
                         value={section.holeDiameter}
                         onChange={(e) => updateSection(section.id, 'holeDiameter', e.target.value)}
+                        className="border-0 focus-visible:ring-1"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        placeholder="e.g., OBM"
+                        value={section.mudType}
+                        onChange={(e) => updateSection(section.id, 'mudType', e.target.value)}
                         className="border-0 focus-visible:ring-1"
                       />
                     </TableCell>
@@ -208,6 +223,7 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
                   <TableHead className="w-[200px]">Start Depth</TableHead>
                   <TableHead className="w-[200px]">End Depth</TableHead>
                   <TableHead className="w-[200px]">Formation Name</TableHead>
+                  <TableHead className="w-[200px]">Mud Type</TableHead>
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -235,6 +251,14 @@ const TableInput: React.FC<TableInputProps> = ({ onConfirm, initialSections, ini
                         placeholder="e.g., Toma"
                         value={formation.formationName}
                         onChange={(e) => updateFormation(formation.id, 'formationName', e.target.value)}
+                        className="border-0 focus-visible:ring-1"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        placeholder="e.g., OBM"
+                        value={formation.mudType}
+                        onChange={(e) => updateFormation(formation.id, 'mudType', e.target.value)}
                         className="border-0 focus-visible:ring-1"
                       />
                     </TableCell>

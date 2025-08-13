@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { ArrowLeft, Upload, BarChart3, Settings, Download, CheckCircle, AlertCircle, XCircle, ChevronLeft } from "lucide-react";
+import { ArrowLeft, Upload, BarChart3, Settings,House,Download, CheckCircle, AlertCircle, XCircle, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +16,8 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
+
+
 interface DataQualityMetrics {
   completeness: number;
   conformity: number;
@@ -27,6 +29,7 @@ interface DrillingData {
   depth: number;
   wob: number;
   rpm: number;
+  tflo: number;
   rop: number;
 }
 
@@ -35,6 +38,7 @@ interface SectionData {
   startDepth: string;
   endDepth: string;
   holeDiameter: string;
+  mudType: string;
 }
 
 interface FormationData {
@@ -42,6 +46,7 @@ interface FormationData {
   startDepth: string;
   endDepth: string;
   formationName: string;
+  mudType: string;
 }
 
 interface DecimationConfig {
@@ -149,8 +154,8 @@ const Decimation = () => {
         wob: Number(row.WOB),
         rpm: Number(row.RPM),
         rop: Number(row.ROP),
-        tflow: Number(row.TFLO), // if your model supports TFLO
-        timestamp: row.Timestamp,
+        tflo: Number(row.TFLO),
+        timestamp: row.Timestamp
       }))
     );
 
@@ -189,71 +194,164 @@ const Decimation = () => {
   };
 
   // Calculate decimated data based on configuration
-  const decimatedData = useMemo(() => {
-    if (!drillingData.length || decimationConfig.depthInterval === 0) return null;
+  // --- add new state for async decimation + a local "isDecimating" flag
+  const [decimatedDataState, setDecimatedDataState] = useState<DrillingData[] | null>(null);
+  const [isDecimating, setIsDecimating] = useState(false);
 
-    let filteredData = drillingData;
-    
-    // Apply filtering based on mode
-    if (decimationConfig.filterMode === 'section' && decimationConfig.selectedSection) {
-      const section = sectionData.find(s => s.id === decimationConfig.selectedSection);
-      if (section) {
-        const startDepth = parseFloat(section.startDepth);
-        const endDepth = parseFloat(section.endDepth);
-        filteredData = drillingData.filter(d => d.depth >= startDepth && d.depth <= endDepth);
-      }
-    } else if (decimationConfig.filterMode === 'formation' && decimationConfig.selectedFormation) {
-      const formation = formationData.find(f => f.id === decimationConfig.selectedFormation);
-      if (formation) {
-        const startDepth = parseFloat(formation.startDepth);
-        const endDepth = parseFloat(formation.endDepth);
-        filteredData = drillingData.filter(d => d.depth >= startDepth && d.depth <= endDepth);
-      }
+  // cancellation token to ignore stale runs
+  let decimationRunId = 0;
+
+  useEffect(() => {
+    // don't compute if no data or interval is zero
+    if (!drillingData.length || decimationConfig.depthInterval === 0) {
+      setDecimatedDataState(null);
+      return;
     }
 
-    if (filteredData.length === 0) return null;
+    const myRunId = ++decimationRunId;
+    setIsDecimating(true);
 
-    // Sort by depth to ensure proper binning
-    filteredData.sort((a, b) => a.depth - b.depth);
+    // Run heavy computation asynchronously so we don't block the UI
+    (async () => {
+      // small delay to allow UI to render (spinner) before compute
+      await new Promise((r) => setTimeout(r, 10));
 
-    const minDepth = Math.floor(filteredData[0].depth);
-    const maxDepth = Math.ceil(filteredData[filteredData.length - 1].depth);
-    const depthInterval = decimationConfig.depthInterval;
+      // copy local references
+      let filteredData = drillingData.slice();
 
-    const decimated: DrillingData[] = [];
+      // OMIT data points with depth < 0
+      filteredData = filteredData.filter(d => d.depth >= 0);
 
-    // Create depth bins based on the interval
-    for (let depthStart = minDepth; depthStart < maxDepth; depthStart += depthInterval) {
-      const depthEnd = depthStart + depthInterval;
-      
-      // Get data points in this depth interval
-      const intervalData = filteredData.filter(d => d.depth >= depthStart && d.depth < depthEnd);
-      
-      if (intervalData.length > 0) {
-        // Sort data for median calculation
-        const sortedWob = [...intervalData].sort((a, b) => a.wob - b.wob);
-        const sortedRpm = [...intervalData].sort((a, b) => a.rpm - b.rpm);
-        const sortedRop = [...intervalData].sort((a, b) => a.rop - b.rop);
-        
-        // Calculate median for each parameter (following the GitHub script approach)
-        const getMedian = (arr: number[]) => {
-          const mid = Math.floor(arr.length / 2);
-          return arr.length % 2 !== 0 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
-        };
-        
-        const decimatedPoint: DrillingData = {
-          depth: depthStart + depthInterval / 2, // Use center of interval
-          wob: getMedian(sortedWob.map(d => d.wob)),
-          rpm: getMedian(sortedRpm.map(d => d.rpm)),
-          rop: getMedian(sortedRop.map(d => d.rop))
-        };
-        
-        decimated.push(decimatedPoint);
+      // Apply filtering based on mode
+      if (decimationConfig.filterMode === 'section' && decimationConfig.selectedSection) {
+        const section = sectionData.find(s => s.id === decimationConfig.selectedSection);
+        if (section) {
+          const startDepth = parseFloat(section.startDepth);
+          const endDepth = parseFloat(section.endDepth);
+          filteredData = filteredData.filter(d => d.depth >= startDepth && d.depth <= endDepth);
+        }
+      } else if (decimationConfig.filterMode === 'formation' && decimationConfig.selectedFormation) {
+        const formation = formationData.find(f => f.id === decimationConfig.selectedFormation);
+        if (formation) {
+          const startDepth = parseFloat(formation.startDepth);
+          const endDepth = parseFloat(formation.endDepth);
+          filteredData = filteredData.filter(d => d.depth >= startDepth && d.depth <= endDepth);
+        }
       }
-    }
 
-    return decimated;
+      if (filteredData.length === 0) {
+        if (myRunId === decimationRunId) {
+          setDecimatedDataState(null);
+          setIsDecimating(false);
+        }
+        return;
+      }
+
+      // Sort by depth
+      filteredData.sort((a, b) => a.depth - b.depth);
+
+      const minDepth = Math.floor(filteredData[0].depth);
+      const maxDepth = Math.ceil(filteredData[filteredData.length - 1].depth);
+      const depthInterval = decimationConfig.depthInterval;
+
+      const decimated: DrillingData[] = [];
+
+      // To avoid long single-thread loops, batch the work and occasionally yield
+      const batchSize = 200; // adjust if necessary
+      let depths: number[] = [];
+      for (let depthStart = minDepth; depthStart < maxDepth; depthStart += depthInterval) {
+        depths.push(depthStart);
+      }
+
+      for (let i = 0; i < depths.length; i += 1) {
+        const depthStart = depths[i];
+        const depthEnd = depthStart + depthInterval;
+        const intervalData = filteredData.filter(d => d.depth >= depthStart && d.depth < depthEnd);
+
+        if (intervalData.length > 0) {
+          // Filter intervalData to keep only entries with non-negative depth, wob, rpm, and rop
+          const filteredData = intervalData.filter(d => 
+            d.depth >= 0 && d.wob >= 0 && d.rpm >= 0 && d.rop >= 0
+          );
+
+          const sortedWob = filteredData
+            .map(d => d.wob)
+            .sort((a, b) => a - b);
+
+          const sortedRpm = filteredData
+            .map(d => d.rpm)
+            .sort((a, b) => a - b);
+
+          const sortedTflo = filteredData
+            .map(d => d.tflo)
+            .sort((a, b) => a - b);
+
+          // --- ROP calculation if missing and timestamp provided ---
+          let ropValues: number[] = [];
+          if (
+            filteredData.every(d => (d.rop === null || d.rop === undefined || isNaN(d.rop))) &&
+            filteredData.every(d => d.timestamp)
+          ) {
+            // Filter progressive depths
+            const progressive: typeof filteredData = [];
+            let maxDepthSeen = -Infinity;
+            for (const p of filteredData) {
+              if (p.depth > maxDepthSeen) {
+                maxDepthSeen = p.depth;
+                progressive.push(p);
+              }
+            }
+
+            // Calculate ROP between points
+            for (let i = 1; i < progressive.length; i++) {
+              const prev = progressive[i - 1];
+              const curr = progressive[i];
+              const t1 = new Date(prev.timestamp).getTime();
+              const t2 = new Date(curr.timestamp).getTime();
+              const hoursDiff = (t2 - t1) / (1000 * 60 * 60);
+              if (hoursDiff > 0) {
+                ropValues.push((curr.depth - prev.depth) / hoursDiff);
+              }
+            }
+          } else {
+            ropValues = filteredData.map(d => d.rop);
+          }
+
+          const sortedRop = ropValues.sort((a, b) => a - b);
+
+
+          const getMean = (arr: number[]) => {
+            if (arr.length === 0) return 0; // avoid division by zero
+            const sum = arr.reduce((acc, val) => acc + val, 0);
+            return sum / arr.length;
+          };
+
+          decimated.push({
+            depth: depthStart + depthInterval / 2,
+            wob: getMean(sortedWob),
+            rpm: getMean(sortedRpm),
+            tflo: getMean(sortedTflo),
+            rop: getMean(sortedRop)
+          });
+        }
+
+
+        // Yield back to main thread every batchSize iterations
+        if (i % batchSize === 0) {
+          // if a newer run started, abort
+          if (myRunId !== decimationRunId) return;
+          await new Promise((r) => setTimeout(r, 0));
+        }
+      }
+
+      // Only set results if this run is still the latest
+      if (myRunId === decimationRunId) {
+        setDecimatedDataState(decimated);
+        setIsDecimating(false);
+      }
+    })();
   }, [drillingData, decimationConfig, sectionData, formationData]);
+
 
   const goToPreviousStep = () => {
     if (currentStep > 1) {
@@ -265,6 +363,17 @@ const Decimation = () => {
       });
     }
   };
+
+  // Sample N points evenly from a dataset for chart rendering
+  const sampleForChart = (arr: DrillingData[] | null, maxPoints = 2000) => {
+    if (!arr) return null;
+    if (arr.length <= maxPoints) return arr;
+    const step = Math.ceil(arr.length / maxPoints);
+    const sampled: DrillingData[] = [];
+    for (let i = 0; i < arr.length; i += step) sampled.push(arr[i]);
+    return sampled;
+  };
+
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -394,7 +503,7 @@ const Decimation = () => {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Data Visualization & Configuration</h2>
+              <h2 className="text-2xl font-bold mb-2">Configure Decimation Settings</h2>
               <p className="text-muted-foreground">
                 WOB, RPM, and ROP analysis vs depth. Use the sidebar to configure decimation settings.
               </p>
@@ -423,31 +532,83 @@ const Decimation = () => {
 
               {/* Charts */}
               <div className="lg:col-span-3 space-y-6">
+                {isDecimating && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-sm text-muted-foreground">Computing decimation... please wait</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <DrillChart
-                  data={drillingData}
-                  decimatedData={decimatedData}
+                  data={sampleForChart(drillingData)}
+                  decimatedData={sampleForChart(decimatedDataState)}
                   parameter="wob"
                   title="Weight on Bit (WOB)"
                   unit="klbs"
                   color="hsl(var(--chart-1))"
                 />
                 
+                {isDecimating && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-sm text-muted-foreground">Computing decimation... please wait</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <DrillChart
-                  data={drillingData}
-                  decimatedData={decimatedData}
+                  data={sampleForChart(drillingData)}
+                  decimatedData={sampleForChart(decimatedDataState)}
                   parameter="rpm"
                   title="Rotary Speed (RPM)"
                   unit="rpm"
                   color="hsl(var(--chart-2))"
                 />
-                
+
+                {isDecimating && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-sm text-muted-foreground">Computing decimation... please wait</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
                 <DrillChart
-                  data={drillingData}
-                  decimatedData={decimatedData}
+                  data={sampleForChart(drillingData)}
+                  decimatedData={sampleForChart(decimatedDataState)}
+                  parameter="tflo"
+                  title="Total Pump Output"
+                  unit="gal/hr"
+                  color="hsl(var(--chart-3))"
+                />
+                
+                {isDecimating && (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-sm text-muted-foreground">Computing decimation... please wait</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                <DrillChart
+                  data={sampleForChart(drillingData)}
+                  decimatedData={sampleForChart(decimatedDataState)}
                   parameter="rop"
                   title="Rate of Penetration (ROP)"
                   unit="ft/hr"
-                  color="hsl(var(--chart-3))"
+                  color="hsl(var(--chart-4))"
                 />
               </div>
             </div>
@@ -477,13 +638,13 @@ const Decimation = () => {
               </p>
             </div>
 
-            {decimatedData && decimatedData.length > 0 ? (
+            {decimatedDataState && decimatedDataState.length > 0 ? (
               <div className="space-y-4">
                 <Card>
                   <CardHeader>
                     <CardTitle>Decimated Data Preview</CardTitle>
                     <CardDescription>
-                      Showing {decimatedData.length} decimated data points 
+                      Showing {decimatedDataState.length} decimated data points 
                       {decimationConfig.depthInterval > 0 && ` (${decimationConfig.depthInterval} m/ft intervals)`}
                     </CardDescription>
                   </CardHeader>
@@ -492,27 +653,29 @@ const Decimation = () => {
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
-                            <TableHead>Depth (m/ft)</TableHead>
-                            <TableHead>WOB (klbs)</TableHead>
+                            <TableHead>Depth</TableHead>
+                            <TableHead>WOB</TableHead>
                             <TableHead>RPM</TableHead>
-                            <TableHead>ROP (ft/hr)</TableHead>
+                            <TableHead>TFLO</TableHead>
+                            <TableHead>ROP</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {decimatedData.slice(0, 50).map((point, index) => (
+                          {decimatedDataState.slice(0, 50).map((point, index) => (
                             <TableRow key={index}>
-                              <TableCell>{point.depth.toFixed(1)}</TableCell>
+                              <TableCell>{point.depth.toFixed(2)}</TableCell>
                               <TableCell>{point.wob.toFixed(2)}</TableCell>
-                              <TableCell>{point.rpm.toFixed(1)}</TableCell>
+                              <TableCell>{point.rpm.toFixed(2)}</TableCell>
+                              <TableCell>{point.tflo.toFixed(2)}</TableCell>
                               <TableCell>{point.rop.toFixed(2)}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
                     </div>
-                    {decimatedData.length > 50 && (
+                    {decimatedDataState.length > 50 && (
                       <p className="text-sm text-muted-foreground mt-2">
-                        Showing first 50 rows of {decimatedData.length} total rows
+                        Showing first 50 rows of {decimatedDataState.length} total rows
                       </p>
                     )}
                   </CardContent>
@@ -525,7 +688,7 @@ const Decimation = () => {
                       const headers = ['Depth', 'WOB', 'RPM', 'ROP'];
                       const csvContent = [
                         headers.join(','),
-                        ...decimatedData.map(point => 
+                        ...decimatedDataState.map(point => 
                           [point.depth.toFixed(1), point.wob.toFixed(2), point.rpm.toFixed(1), point.rop.toFixed(2)].join(',')
                         )
                       ].join('\n');
@@ -592,9 +755,10 @@ const Decimation = () => {
                 }}
                 className="text-muted-foreground hover:text-foreground"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Modules
+                <House className="h-4 w-4 mr-2" /> {/* Changed icon */}
+
               </Button>
+
               <div>
                 <h1 className="text-2xl font-bold">DrillPlan Sensor Data Decimation Tool</h1>
                 <p className="text-sm text-muted-foreground">Seemless end-to-end data management tool for DrillPlan Data Ingestion</p>

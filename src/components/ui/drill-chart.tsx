@@ -1,33 +1,43 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface DataPoint {
   depth: number;
   wob: number;
   rpm: number;
+  tflo: number;
   rop: number;
 }
 
 interface DrillChartProps {
   data: DataPoint[];
   decimatedData?: DataPoint[];
-  parameter: 'wob' | 'rpm' | 'rop';
+  parameter: 'wob' | 'rpm' | 'tflo' |'rop';
   title: string;
   unit: string;
   color: string;
+  
 }
 
-const DrillChart: React.FC<DrillChartProps> = ({ 
-  data, 
-  decimatedData, 
-  parameter, 
-  title, 
-  unit, 
-  color 
+const DrillChart: React.FC<DrillChartProps> = ({
+  data,
+  decimatedData,
+  parameter,
+  title,
+  unit,
+  color
 }) => {
   const displayData = decimatedData || data;
-  
+  const maxDepth = Math.max(...displayData.map(d => d.depth), 0);
+
+  // Generate ticks at every 500 interval from 0 to maxDepth
+  const tickInterval = 500;
+  const ticks = [];
+  for (let i = 0; i <= maxDepth; i += tickInterval) {
+    ticks.push(i);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -41,53 +51,59 @@ const DrillChart: React.FC<DrillChartProps> = ({
       <CardContent>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={displayData}>
+            <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-              <XAxis 
-                dataKey="depth" 
-                domain={['dataMin', 'dataMax']}
+              <XAxis
+                dataKey="depth"
                 type="number"
                 scale="linear"
-                label={{ value: 'Depth (ft)', position: 'insideBottom', offset: -10 }}
+                domain={[0, maxDepth]}
+                ticks={ticks}   // <-- Major ticks every 500 units
+                allowDataOverflow={false}
+                label={{ value: 'Depth', position: 'insideBottom', offset: -5 }}
               />
-              <YAxis 
-                domain={['dataMin', 'dataMax']}
-                label={{ value: `${title} (${unit})`, angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip 
-                formatter={(value, name) => [`${value} ${unit}`, title]}
-                labelFormatter={(value) => `Depth: ${value} ft`}
-              />
-              
-              {/* Original data (faded if decimated data exists) */}
-              {decimatedData && (
-                <Line
-                  type="monotone"
-                  dataKey={parameter}
-                  data={data}
-                  stroke={color}
-                  strokeWidth={1}
-                  strokeOpacity={0.3}
-                  dot={false}
-                  connectNulls={false}
-                />
-              )}
-              
-              {/* Main data line */}
-              <Line
-                type="monotone"
+              <YAxis
                 dataKey={parameter}
-                stroke={color}
-                strokeWidth={decimatedData ? 3 : 2}
-                dot={decimatedData ? { fill: color, strokeWidth: 2, r: 4 } : false}
-                connectNulls={false}
+                type="number"
+                domain={[0, 'dataMax']}
+                label={{ 
+                  value: `${title}`, 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  dx: 10,  // moves label left/right
+                  dy: 80     // adjust vertical position if needed
+                }}
               />
-            </LineChart>
+
+
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (active && payload && payload.length) {
+                    const xValue = Number(payload[0].value).toFixed(2); // Depth
+                    const yValue = Number(payload[1].value).toFixed(2); // Parameter value
+                    return (
+                      <div style={{ background: 'white', padding: '5px', border: '1px solid #ccc' }}>
+                        <div>{`${parameter.toUpperCase()} : ${yValue}`}</div>
+                        <div>{`Depth: ${xValue}`}</div>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+
+              <Scatter
+                name={title}
+                data={displayData}
+                fill={color}
+              />
+            </ScatterChart>
           </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>
   );
 };
+
 
 export default DrillChart;
