@@ -16,7 +16,6 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { useRef } from "react";
-import SurveyInput from '@/components/ui/surveyInput';
 
 
 
@@ -33,7 +32,6 @@ interface DrillingData {
   rpm: number;
   tflo: number;
   rop: number;
-  tvd:number;
 }
 
 interface SectionData {
@@ -42,11 +40,6 @@ interface SectionData {
   endDepth: string;
   holeDiameter: string;
   mudType: string;
-}
-
-interface Survey {
-  id: string;
-  MD: number;
 }
 
 interface FormationData {
@@ -82,54 +75,7 @@ const Decimation = () => {
     enableSmoothing: false,
     outlierRemoval: false
   });
-  const [surveyData, setSurveyData] = useState<{ MD: number; Inclination: number }[]>([]);
-
-  const calculateTVD = (survey: { MD: number; Inclination: number }[]) => {
-    const sorted = [...survey].sort((a, b) => a.MD - b.MD);
-    const tvd: number[] = [0.0];
-
-    for (let i = 1; i < sorted.length; i++) {
-      const deltaMD = sorted[i].MD - sorted[i - 1].MD;
-      const avgInclRad = ((sorted[i].Inclination + sorted[i - 1].Inclination) / 2) * (Math.PI / 180);
-      const deltaTVD = deltaMD * Math.cos(avgInclRad);
-      tvd.push(parseFloat((tvd[i - 1] + deltaTVD).toFixed(2)));
-    }
-
-    return sorted.map((point, i) => ({ ...point, TVD: tvd[i] }));
-  };
-
-  const interpolateTVD = (
-    depths: number[],
-    survey: { MD: number; TVD: number }[]
-  ): number[] => {
-    const result: number[] = [];
-
-    for (const depth of depths) {
-      let tvd = 0;
-      for (let i = 1; i < survey.length; i++) {
-        const md1 = survey[i - 1].MD;
-        const md2 = survey[i].MD;
-        const tvd1 = survey[i - 1].TVD;
-        const tvd2 = survey[i].TVD;
-
-        if (depth >= md1 && depth <= md2) {
-          const ratio = (depth - md1) / (md2 - md1);
-          tvd = tvd1 + ratio * (tvd2 - tvd1);
-          break;
-        }
-      }
-
-      if (depth < survey[0].MD) tvd = survey[0].TVD;
-      else if (depth > survey[survey.length - 1].MD) tvd = survey[survey.length - 1].TVD;
-
-      result.push(parseFloat(tvd.toFixed(2)));
-    }
-
-    return result;
-  };
-
-
-
+  
   
 
   const steps = [
@@ -338,26 +284,6 @@ const Decimation = () => {
   }, [drillingData, decimationConfig, sectionData, formationData]);
 
 
-  const [enrichedDecimatedData, setEnrichedDecimatedData] = useState<DrillingData[]>([]);
-
-
-  useEffect(() => {
-    if (!decimatedDataState || surveyData.length === 0) return;
-
-    const surveyWithTVD = calculateTVD(surveyData);
-    const interpolatedTVD = interpolateTVD(
-      decimatedDataState.map(p => p.depth),
-      surveyWithTVD
-    );
-
-    const enriched = decimatedDataState.map((point, index) => ({
-      ...point,
-      tvd: interpolatedTVD[index],
-    }));
-
-    setEnrichedDecimatedData(enriched);
-  }, [decimatedDataState, surveyData]);
-
 
 
 
@@ -438,26 +364,6 @@ const Decimation = () => {
                   placeholder="Enter Well Name"
                 />
               </div>
-
-
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold mb-2">Survey Data Input</h3>
-                <SurveyInput
-                  initialData={surveyData}
-                  onConfirm={(data) => {
-                    setSurveyData(data);
-                    toast({
-                      title: '✅ Survey Data Saved',
-                      description: `${data.length} survey points recorded.`,
-                      className: 'border-green-200 bg-green-50 text-green-800',
-                    });
-                  }}
-                />
-              </div>
-
-
-
-              
             </div>
 
             {/* File uploader */}
@@ -467,8 +373,6 @@ const Decimation = () => {
               maxFileSize={100 * 1024 * 1024} // 100MB
               initialFile={uploadedFile}
             />
-
-          
 
             {isProcessing && (
               <Card>
@@ -484,9 +388,6 @@ const Decimation = () => {
             )}
           </div>
         );
-
-    
-
 
         
 
@@ -755,7 +656,7 @@ const Decimation = () => {
                         </TableHeader>
 
                         <TableBody>
-                          {enrichedDecimatedData
+                          {decimatedDataState
                             .filter(point => !(point.rop === 0 && point.wob === 0 && point.rpm === 0 && point.tflo === 0))
                             .map((point, index) => {
                               const section = sectionData.find(
@@ -773,7 +674,7 @@ const Decimation = () => {
                                   <TableCell>{wellName}</TableCell>         {/* Well Name */}
                                   <TableCell>{runNumber}</TableCell>        {/* Run Number = sequential */}
                                   <TableCell>{point.depth.toFixed(2)}</TableCell>
-                                  <TableCell>{point.tvd !== undefined ? point.tvd.toFixed(2) : ''}</TableCell>
+                                  <TableCell>{''}</TableCell>               {/* TVD */}
                                   <TableCell>{point.tflo.toFixed(2)}</TableCell>
                                   <TableCell>{point.rop.toFixed(2)}</TableCell>
                                   <TableCell>{point.rpm.toFixed(2)}</TableCell>
@@ -796,21 +697,13 @@ const Decimation = () => {
                   <Button 
                     onClick={() => {
                       // Create CSV content
-                      const headers = ['Depth', 'TVD', 'WOB', 'RPM', 'ROP', 'TFLO'];
+                      const headers = ['Depth', 'WOB', 'RPM', 'ROP'];
                       const csvContent = [
                         headers.join(','),
-                        ...enrichedDecimatedData.map(point =>
-                          [
-                            point.depth.toFixed(2),
-                            point.tvd?.toFixed(2) ?? '',
-                            point.wob.toFixed(2),
-                            point.rpm.toFixed(2),
-                            point.rop.toFixed(2),
-                            point.tflo.toFixed(2),
-                          ].join(',')
-                        ),
+                        ...decimatedDataState.map(point => 
+                          [point.depth.toFixed(1), point.wob.toFixed(2), point.rpm.toFixed(1), point.rop.toFixed(2)].join(',')
+                        )
                       ].join('\n');
-
 
                       // Create and download file
                       const blob = new Blob([csvContent], { type: 'text/csv' });
