@@ -684,53 +684,56 @@ const Decimation = () => {
               </div>
             </div>
 
-            <Button
-              onClick={() => {
-                // ✅ Cancel any ongoing decimation
-                decimationRunIdRef.current++;
+            <div className="flex justify-end mt-4">
 
-                // Store deleted points for export if needed
-                setDeletedPoints(prev => [...prev, ...selectedPoints]);
+              <Button
+                onClick={() => {
+                  // ✅ Cancel any ongoing decimation
+                  decimationRunIdRef.current++;
 
-                // Remove selected points from the main raw data
-                
-                setDrillingData(prev =>
-                  prev.filter(p =>
-                    !selectedPoints.some(sel =>
-                      sel.depth === p.depth &&
-                      sel.wob === p.wob &&
-                      sel.rpm === p.rpm &&
-                      sel.rop === p.rop &&
-                      sel.tflo === p.tflo
-                    )
-                  )
-                );
+                  // Store deleted points for export if needed
+                  setDeletedPoints(prev => [...prev, ...selectedPoints]);
 
-
-                // Also remove from decimated dataset (so charts update immediately)
-                
-                setDecimatedDataState(prev =>
-                  prev
-                    ? prev.filter(p =>
-                        !selectedPoints.some(sel =>
-                          sel.depth === p.depth &&
-                          sel.wob === p.wob &&
-                          sel.rpm === p.rpm &&
-                          sel.rop === p.rop &&
-                          sel.tflo === p.tflo
-                        )
+                  // Remove selected points from the main raw data
+                  
+                  setDrillingData(prev =>
+                    prev.filter(p =>
+                      !selectedPoints.some(sel =>
+                        sel.depth === p.depth &&
+                        sel.wob === p.wob &&
+                        sel.rpm === p.rpm &&
+                        sel.rop === p.rop &&
+                        sel.tflo === p.tflo
                       )
-                    : prev
-                );
+                    )
+                  );
 
 
-                // Clear selection
-                setSelectedPoints([]);
-              }}
-              disabled={selectedPoints.length === 0}
-            >
-              Delete Selected Points
-            </Button>
+                  // Also remove from decimated dataset (so charts update immediately)
+                  
+                  setDecimatedDataState(prev =>
+                    prev
+                      ? prev.filter(p =>
+                          !selectedPoints.some(sel =>
+                            sel.depth === p.depth &&
+                            sel.wob === p.wob &&
+                            sel.rpm === p.rpm &&
+                            sel.rop === p.rop &&
+                            sel.tflo === p.tflo
+                          )
+                        )
+                      : prev
+                  );
+
+
+                  // Clear selection
+                  setSelectedPoints([]);
+                }}
+                disabled={selectedPoints.length === 0}
+              >
+                Delete Selected Points
+              </Button>
+            </div>
 
 
 
