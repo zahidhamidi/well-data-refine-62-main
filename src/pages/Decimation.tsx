@@ -75,6 +75,9 @@ const Decimation = () => {
     enableSmoothing: false,
     outlierRemoval: false
   });
+  const [selectedPoints, setSelectedPoints] = useState<DrillingData[]>([]);
+  const [deletedPoints, setDeletedPoints] = useState<DrillingData[]>([]);
+
   
   
 
@@ -209,79 +212,118 @@ const Decimation = () => {
   
 
   useEffect(() => {
-    if (!drillingData.length || decimationConfig.depthInterval === 0) {
-      setDecimatedDataState(null);
-      return;
-    }
 
-    const myRunId = ++decimationRunIdRef.current;
-    setIsDecimating(true);
+    const timeout = setTimeout(() => {
+        const myRunId = ++decimationRunIdRef.current;
+        setIsDecimating(true);
 
-    (async () => {
-      await new Promise((r) => setTimeout(r, 10));
 
-      const depthInterval = decimationConfig.depthInterval;
-      const decimated: DrillingData[] = [];
+      (async () => {
+        // Small delay to allow UI updates (so loading spinner shows)
+        await new Promise((r) => setTimeout(r, 10));
 
-      const getMean = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+        const depthInterval = decimationConfig.depthInterval; // e.g., 10 feet/meters per bin
+        const decimated: DrillingData[] = []; // Will store our final decimated results
 
-      let ranges: { start: number; end: number }[] = [];
+        // Helper function: returns the average of an array of numbers
+        const getMean = (arr: number[]) =>
+          arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
 
-      if (decimationConfig.filterMode === 'section') {
-        const selected = sectionData.find(s => s.id === decimationConfig.selectedSection);
-        if (selected) {
-          ranges.push({
-            start: parseFloat(selected.startDepth),
-            end: parseFloat(selected.endDepth),
-          });
-        }
-      } else if (decimationConfig.filterMode === 'formation') {
-        const selected = formationData.find(f => f.id === decimationConfig.selectedFormation);
-        if (selected) {
-          ranges.push({
-            start: parseFloat(selected.startDepth),
-            end: parseFloat(selected.endDepth),
-          });
-        }
-      } else if (decimationConfig.filterMode === 'all') {
-        ranges = sectionData.map(s => ({
-          start: parseFloat(s.startDepth),
-          end: parseFloat(s.endDepth),
-        }));
-      }
+        // Holds the depth ranges we want to decimate over
+        let ranges: { start: number; end: number }[] = [];
 
-      for (const range of ranges) {
-        const sectionDataPoints = drillingData
-          .filter(d => d.depth >= range.start && d.depth <= range.end)
-
-        for (let depthStart = range.start; depthStart < range.end; depthStart += depthInterval) {
-          const depthEnd = Math.min(depthStart + depthInterval, range.end);
-          const intervalData = sectionDataPoints.filter(d => d.depth >= depthStart && d.depth < depthEnd);
-
-          if (intervalData.length > 0) {
-            const validData = intervalData.filter(d => d.wob >= 0 && d.rpm >= 0 && d.rop >= 0 && d.tflo >= 0);
-            const ropValues = validData.map(d => d.rop);
-
-            decimated.push({
-              depth: depthStart + depthInterval / 2,
-              wob: getMean(validData.map(d => d.wob)),
-              rpm: getMean(validData.map(d => d.rpm)),
-              tflo: getMean(validData.map(d => d.tflo)),
-              rop: getMean(ropValues),
+        // Decide which ranges to use based on the filter mode
+        if (decimationConfig.filterMode === "section") {
+          // Filter by a single selected section
+          const selected = sectionData.find(
+            (s) => s.id === decimationConfig.selectedSection
+          );
+          if (selected) {
+            ranges.push({
+              start: parseFloat(selected.startDepth),
+              end: parseFloat(selected.endDepth),
             });
           }
-
-          if (myRunId !== decimationRunIdRef.current) return;
-          await new Promise((r) => setTimeout(r, 0));
+        } else if (decimationConfig.filterMode === "formation") {
+          // Filter by a single selected formation
+          const selected = formationData.find(
+            (f) => f.id === decimationConfig.selectedFormation
+          );
+          if (selected) {
+            ranges.push({
+              start: parseFloat(selected.startDepth),
+              end: parseFloat(selected.endDepth),
+            });
+          }
+        } else if (decimationConfig.filterMode === "all") {
+          // Use all section ranges
+          ranges = sectionData.map((s) => ({
+            start: parseFloat(s.startDepth),
+            end: parseFloat(s.endDepth),
+          }));
         }
-      }
 
-      if (myRunId === decimationRunIdRef.current) {
-        setDecimatedDataState(decimated);
-        setIsDecimating(false);
-      }
-    })();
-  }, [drillingData, decimationConfig, sectionData, formationData]);
+        // Loop through each depth range
+        for (const range of ranges) {
+          // 1️⃣ Remove points where ALL metrics are < 0
+          const sectionDataPoints = drillingData
+            .filter((d) => d.depth >= range.start && d.depth <= range.end)
+            .filter(
+              (d) => !(d.wob < 0 && d.rpm < 0 && d.rop < 0 && d.tflo < 0)
+            );
+
+          // Loop through the range in steps (bins) of depthInterval
+          for (
+            let depthStart = range.start;
+            depthStart < range.end;
+            depthStart += depthInterval
+          ) {
+            const depthEnd = Math.min(depthStart + depthInterval, range.end);
+
+            // Get all points within the current depth bin
+            const intervalData = sectionDataPoints.filter(
+              (d) => d.depth >= depthStart && d.depth < depthEnd
+            );
+
+            if (intervalData.length > 0) {
+              // 2️⃣ Per-metric filtering: Only include values >= 0 for averaging
+              const wobVals = intervalData.map((d) => d.wob).filter((v) => v >= 0);
+              const rpmVals = intervalData.map((d) => d.rpm).filter((v) => v >= 0);
+              const ropVals = intervalData.map((d) => d.rop).filter((v) => v >= 0);
+              const tfloVals = intervalData.map((d) => d.tflo).filter((v) => v >= 0);
+
+              // Add averaged values to our decimated list
+              decimated.push({
+                depth: depthStart + depthInterval / 2, // Midpoint of bin
+                wob: getMean(wobVals),
+                rpm: getMean(rpmVals),
+                tflo: getMean(tfloVals),
+                rop: getMean(ropVals),
+              });
+            }
+
+            // Cancel if a new decimation started while we were still running
+            if (myRunId !== decimationRunIdRef.current) return;
+
+            // Yield control so UI can update during long loops
+            await new Promise((r) => setTimeout(r, 0));
+          }
+        }
+
+        // Only update state if this is still the latest decimation run
+        if (myRunId === decimationRunIdRef.current) {
+          setDecimatedDataState(decimated);
+          setIsDecimating(false);
+        }
+      })();
+    }, 100); // Delay of 100ms
+
+    
+    return () => clearTimeout(timeout); // Cleanup on dependency change
+    }, [drillingData, decimationConfig, sectionData, formationData]);
+
+
+
 
 
 
@@ -543,7 +585,16 @@ const Decimation = () => {
                   title="Weight on Bit (WOB)"
                   unit="klbs"
                   color="hsl(var(--chart-1))"
+                  selectedPoints={selectedPoints} // NEW: selection state
+                  onPointClick={(point) => {       // NEW: handle point click
+                    setSelectedPoints(prev =>
+                      prev.some(sel => sel.depth === point.depth && sel.wob === point.wob)
+                        ? prev.filter(sel => !(sel.depth === point.depth && sel.wob === point.wob)) // Deselect if already selected
+                        : [...prev, point] // Add to selection
+                    );
+                  }}
                 />
+
                 
                 {isDecimating && (
                   <Card>
@@ -563,7 +614,16 @@ const Decimation = () => {
                   title="Rotary Speed (RPM)"
                   unit="rpm"
                   color="hsl(var(--chart-2))"
+                  selectedPoints={selectedPoints}
+                  onPointClick={(point) => {
+                    setSelectedPoints(prev =>
+                      prev.some(sel => sel.depth === point.depth && sel.rpm === point.rpm)
+                        ? prev.filter(sel => !(sel.depth === point.depth && sel.rpm === point.rpm))
+                        : [...prev, point]
+                    );
+                  }}
                 />
+
 
                 {isDecimating && (
                   <Card>
@@ -580,9 +640,18 @@ const Decimation = () => {
                   decimatedData={sampleForChart(decimatedDataState)}
                   parameter="tflo"
                   title="Total Pump Output"
-                  unit="gal/hr"
+                  unit="tflo"
                   color="hsl(var(--chart-3))"
+                  selectedPoints={selectedPoints}
+                  onPointClick={(point) => {
+                    setSelectedPoints(prev =>
+                      prev.some(sel => sel.depth === point.depth && sel.tflo === point.tflo)
+                        ? prev.filter(sel => !(sel.depth === point.depth && sel.tflo === point.tflo))
+                        : [...prev, point]
+                    );
+                  }}
                 />
+
                 
                 {isDecimating && (
                   <Card>
@@ -599,12 +668,72 @@ const Decimation = () => {
                   data={sampleForChart(drillingData)}
                   decimatedData={sampleForChart(decimatedDataState)}
                   parameter="rop"
-                  title="Rate of Penetration (ROP)"
-                  unit="ft/hr"
+                  title="Rate of Peneration (ROP)"
+                  unit="rop"
                   color="hsl(var(--chart-4))"
+                  selectedPoints={selectedPoints}
+                  onPointClick={(point) => {
+                    setSelectedPoints(prev =>
+                      prev.some(sel => sel.depth === point.depth && sel.rop === point.rop)
+                        ? prev.filter(sel => !(sel.depth === point.depth && sel.rop === point.rop))
+                        : [...prev, point]
+                    );
+                  }}
                 />
+
               </div>
             </div>
+
+            <Button
+              onClick={() => {
+                // ✅ Cancel any ongoing decimation
+                decimationRunIdRef.current++;
+
+                // Store deleted points for export if needed
+                setDeletedPoints(prev => [...prev, ...selectedPoints]);
+
+                // Remove selected points from the main raw data
+                
+                setDrillingData(prev =>
+                  prev.filter(p =>
+                    !selectedPoints.some(sel =>
+                      sel.depth === p.depth &&
+                      sel.wob === p.wob &&
+                      sel.rpm === p.rpm &&
+                      sel.rop === p.rop &&
+                      sel.tflo === p.tflo
+                    )
+                  )
+                );
+
+
+                // Also remove from decimated dataset (so charts update immediately)
+                
+                setDecimatedDataState(prev =>
+                  prev
+                    ? prev.filter(p =>
+                        !selectedPoints.some(sel =>
+                          sel.depth === p.depth &&
+                          sel.wob === p.wob &&
+                          sel.rpm === p.rpm &&
+                          sel.rop === p.rop &&
+                          sel.tflo === p.tflo
+                        )
+                      )
+                    : prev
+                );
+
+
+                // Clear selection
+                setSelectedPoints([]);
+              }}
+              disabled={selectedPoints.length === 0}
+            >
+              Delete Selected Points
+            </Button>
+
+
+
 
             <div className="flex justify-center">
               <Button onClick={() => {
