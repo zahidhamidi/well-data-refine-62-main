@@ -301,10 +301,19 @@ const Decimation = () => {
   // Sample N points evenly from a dataset for chart rendering
   const sampleForChart = (arr: DrillingData[] | null, maxPoints = 2000) => {
     if (!arr) return null;
+
+    // If decimation interval is 0, remove points with depth < 0
+    if (decimationConfig.depthInterval === 0) {
+      arr = arr.filter(d => d.depth >= 0);
+    }
+
     if (arr.length <= maxPoints) return arr;
+
     const step = Math.ceil(arr.length / maxPoints);
     const sampled: DrillingData[] = [];
-    for (let i = 0; i < arr.length; i += step) sampled.push(arr[i]);
+    for (let i = 0; i < arr.length; i += step) {
+      sampled.push(arr[i]);
+    }
     return sampled;
   };
   
@@ -501,7 +510,7 @@ const Decimation = () => {
                   onConfigChange={setDecimationConfig}
                   sections={sectionData.map(s => ({ 
                     id: s.id, 
-                    name: `${s.startDepth}-${s.endDepth}ft`, 
+                    name: `${s.startDepth}-${s.endDepth}`, 
                     startDepth: s.startDepth, 
                     endDepth: s.endDepth 
                   }))}

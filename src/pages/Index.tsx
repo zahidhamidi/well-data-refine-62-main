@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Upload, BarChart3, Settings, FileSpreadsheet } from "lucide-react";
+import { Upload, BarChart3, Settings, FileSpreadsheet,AudioLines } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,20 +20,28 @@ const Index = () => {
       features: ["Sensor Data Decimation", "Data Quality Audit", "Export as DIF-ingestible template"]
     },
     {
-      id: "optimization",
+      id: "channelmapping",
       title: "EDGE Channel Mapping Tool",
       description: "Seemless mapping tool for InterACT-Inside",
       icon: Settings,
       status: "Coming Soon",
-      features: [""]
+      features: ["Data Quality Audit","Channel Auto-mapping"]
     },
     {
-      id: "reporting",
-      title: "Data Reports",
-      description: "Generate comprehensive drilling data reports",
+      id: "wellcount",
+      title: "InterACT Well Count Reporting",
+      description: "Generate comprehensive InterACT reports for global geounits recharges",
       icon: FileSpreadsheet,
       status: "Coming Soon",
-      features: ["Automated Reports", "Custom Templates", "Statistical Analysis", "Quality Dashboards"]
+      features: ["Automated Reports","Quick Dashboards"]
+    },
+    {
+      id: "piqualitycheck",
+      title: "Performance Insights Data Audit",
+      description: "Generate comprehensive PI pre-ingestion data audit report.",
+      icon: AudioLines,
+      status: "Coming Soon",
+      features: ["Sensor Data Audit","DDR Data Audit"]
     }
   ];
 
@@ -58,31 +66,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="relative h-[60vh] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[30vh] flex items-center justify-center overflow-hidden">
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${heroImage})` }}
+          style={{ 
+            backgroundImage: `url(${heroImage})`}}
         />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/90 to-primary/60" />
         
         <div className="relative z-10 text-center text-primary-foreground px-6 max-w-4xl">
           <h1 className="text-5xl font-bold mb-6">
-            DDH Automation Hub
+            Digital Drilling Hub Tools Catalogue
           </h1>
           <p className="text-xl mb-8 opacity-90">
             Centralized hub for application and operation support tools
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Badge variant="secondary" className="text-sm px-4 py-2">
-              Advanced Analytics
-            </Badge>
-            <Badge variant="secondary" className="text-sm px-4 py-2">
-              Real-time Processing
-            </Badge>
-            <Badge variant="secondary" className="text-sm px-4 py-2">
-              Industry Standard
-            </Badge>
-          </div>
         </div>
       </section>
 
@@ -102,13 +100,13 @@ const Index = () => {
                   className={`transition-all duration-300 hover:shadow-lg border-2 ${
                     isAvailable 
                       ? "hover:border-primary cursor-pointer" 
-                      : "opacity-75 cursor-not-allowed"
+                      : "opacity-50 cursor-not-allowed"
                   }`}
                   onClick={() => isAvailable && handleModuleSelect(module.id)}
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between mb-4">
-                      <Icon className={`h-12 w-12 ${isAvailable ? "text-primary" : "text-muted-foreground"}`} />
+                      <Icon className={`h-8 w-8 ${isAvailable ? "text-primary" : "text-muted-foreground"}`} />
                       <Badge 
                         variant={isAvailable ? "default" : "secondary"}
                         className="font-medium"
@@ -125,7 +123,7 @@ const Index = () => {
                     <ul className="space-y-2">
                       {module.features.map((feature, index) => (
                         <li key={index} className="flex items-center text-sm text-muted-foreground">
-                          <div className="w-1.5 h-1.5 bg-accent rounded-full mr-2" />
+                          <div className="w-1.5 h-1.5 bg-accent rounded-full mr-4" />
                           {feature}
                         </li>
                       ))}
@@ -140,7 +138,7 @@ const Index = () => {
                         }}
                       >
                         <Upload className="mr-2 h-4 w-4" />
-                        Launch Module
+                        Launch
                       </Button>
                     )}
                   </CardContent>
