@@ -76,7 +76,7 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
       </div>
 
       <div className="bg-card border rounded-lg overflow-hidden">
-        <div className="bg-table-header text-white p-4">
+        <div className="bg-table-header text-black p-4">
           <div className="grid grid-cols-4 gap-4 font-medium">
             <div>Original Header</div>
             <div>Mapped Channel</div>
@@ -99,7 +99,12 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                 <select
                   value={mapping.mapped}
                   onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
-                  className="w-full p-2 border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent
+                    ${mapping.mapped 
+                      ? 'bg-green-100'  // matched
+                      : 'bg-red-100'    // no match
+                    }
+                  `}
                 >
                   <option value="">Select channel...</option>
                   {standardChannels.map(channel => (
@@ -107,6 +112,8 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                   ))}
                 </select>
               </div>
+
+
 
               <div className="text-muted-foreground">{mapping.originalUnit || "N/A"}</div>
 
