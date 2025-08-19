@@ -1,9 +1,7 @@
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Trash } from "lucide-react";
 import { DrillingData } from "./DrillingInterface";
 import { ChannelBankItem } from './ChannelBank';
-import { defaultChannels } from './ChannelBank';
-
 
 type ColumnMappingProps = {
   data: DrillingData;
@@ -17,6 +15,7 @@ type ColumnMappingProps = {
 };
 
 export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMappingProps) => {
+  // State for mappings
   const [mappings, setMappings] = useState(() => {
     return data.headers.map((header, index) => {
       const headerLower = header.toLowerCase().trim();
@@ -44,28 +43,43 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
     });
   });
 
-  const [searchTerm, setSearchTerm] = useState("");
+  const [toast, setToast] = useState<string | null>(null); // Toast state
 
+  // Update a mapping field
   const updateMapping = (index: number, field: 'mapped' | 'mappedUnit', value: string) => {
     const newMappings = [...mappings];
     newMappings[index] = { ...newMappings[index], [field]: value };
     setMappings(newMappings);
   };
 
+  // Handle removing a mapping row
+  const removeMapping = (index: number) => {
+    const removedRow = mappings[index];
+    setMappings(prev => prev.filter((_, i) => i !== index));
+
+    // Show toast
+    setToast(`Removed row: "${removedRow.original}"`);
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const handleComplete = () => {
     onMappingComplete(mappings);
   };
 
-  // Dropdown options are all standard names
   const standardChannels = channelBank.map(c => c.standardName);
   const standardUnits = ["ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec"];
 
-  const filteredChannels = standardChannels.filter(channel =>
-    channel.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-yellow-200 text-black px-4 py-2 rounded shadow-md z-50">
+          {toast}
+        </div>
+      )}
+
+
       <div className="text-center">
         <h2 className="text-2xl font-semibold text-foreground mb-2">
           Column Mapping Configuration
@@ -75,65 +89,77 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
         </p>
       </div>
 
+      {/* Table */}
       <div className="bg-card border rounded-lg overflow-hidden">
         <div className="bg-table-header text-black p-4">
-          <div className="grid grid-cols-4 gap-4 font-medium">
+          <div className="grid grid-cols-5 gap-4 font-medium">
             <div>Original Header</div>
             <div>Mapped Channel</div>
             <div>Original Unit</div>
             <div>Mapped Unit</div>
+            <div>Action</div>
           </div>
         </div>
 
         <div className="divide-y divide-border">
-          {mappings.map((mapping, index) => (
-            <div 
-              key={index} 
-              className={`p-4 grid grid-cols-4 gap-4 items-center ${
-                index % 2 === 0 ? 'bg-background' : 'bg-table-row-even'
-              } hover:bg-table-row-hover transition-colors`}
-            >
-              <div className="font-medium text-foreground">{mapping.original}</div>
+          {mappings.map((mapping, index) => {
+            const matched = !!mapping.mapped;
 
-              <div className="relative">
-                <select
-                  value={mapping.mapped}
-                  onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
-                  className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent
-                    ${mapping.mapped 
-                      ? 'bg-green-100'  // matched
-                      : 'bg-red-100'    // no match
-                    }
-                  `}
-                >
-                  <option value="">Select channel...</option>
-                  {standardChannels.map(channel => (
-                    <option key={channel} value={channel}>{channel}</option>
-                  ))}
-                </select>
+            return (
+              <div 
+                key={index} 
+                className={`p-4 grid grid-cols-5 gap-4 items-center ${
+                  index % 2 === 0 ? 'bg-background' : 'bg-table-row-even'
+                } hover:bg-table-row-hover transition-colors`}
+              >
+                <div className="font-medium text-foreground">{mapping.original}</div>
+
+                <div>
+                  <select
+                    value={mapping.mapped}
+                    onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
+                    className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      matched ? 'bg-green-200' : 'bg-red-200'
+                    }`}
+                  >
+                    <option value="">Select channel...</option>
+                    {standardChannels.map(channel => (
+                      <option key={channel} value={channel}>{channel}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="text-muted-foreground">{mapping.originalUnit || "N/A"}</div>
+
+                <div>
+                  <select
+                    value={mapping.mappedUnit}
+                    onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
+                    className="w-full p-2 border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="">Select unit...</option>
+                    {standardUnits.map(unit => (
+                      <option key={unit} value={unit}>{unit}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Trash icon */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={() => removeMapping(index)}
+                    className="p-1 hover:bg-background rounded"
+                  >
+                    <Trash className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </div>
               </div>
-
-
-
-              <div className="text-muted-foreground">{mapping.originalUnit || "N/A"}</div>
-
-              <div>
-                <select
-                  value={mapping.mappedUnit}
-                  onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
-                  className="w-full p-2 border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="">Select unit...</option>
-                  {standardUnits.map(unit => (
-                    <option key={unit} value={unit}>{unit}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
+      {/* Complete Mapping Button */}
       <div className="flex justify-center mt-4">
         <button
           onClick={handleComplete}
