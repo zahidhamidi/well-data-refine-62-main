@@ -39,9 +39,10 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
       const fileExtension = file.name.toLowerCase().split('.').pop();
       let headers: string[] = [];
       let data: any[] = [];
+      let units: string[] = [];
       let originalLasHeader = '';
 
-      // LAS file parsing
+      // LAS file parsing (unchanged)
       if (fileExtension === 'las') {
         const text = await file.text();
         const lines = text.split('\n');
@@ -57,14 +58,24 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
             headers.forEach((h, i) => obj[h] = values[i]);
             return obj;
           });
+          units = Array(headers.length).fill(''); // LAS has no explicit units row
         }
       } 
       // CSV file parsing
       else if (fileExtension === 'csv') {
         const text = await file.text();
-        const result = Papa.parse(text, { header: true, skipEmptyLines: true });
-        headers = result.meta.fields || [];
-        data = result.data as any[];
+        const result = Papa.parse(text, { header: false, skipEmptyLines: true }); // disable header parsing
+        const rows = result.data as string[][];
+
+        if (rows.length >= 2) {
+          headers = rows[0];       // first row = channel names
+          units = rows[1];         // second row = units
+          data = rows.slice(2).map(row => {
+            const obj: any = {};
+            headers.forEach((h, i) => obj[h] = row[i]);
+            return obj;
+          });
+        }
       } 
       // XLSX file parsing
       else if (fileExtension === 'xlsx') {
@@ -72,8 +83,17 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        headers = Object.keys(data[0] || {});
+
+        const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' }) as string[][];
+        if (rawData.length >= 2) {
+          headers = rawData[0];    // first row = channel names
+          units = rawData[1];      // second row = units
+          data = rawData.slice(2).map(row => {
+            const obj: any = {};
+            headers.forEach((h, i) => obj[h] = row[i]);
+            return obj;
+          });
+        }
       } 
       else {
         alert('Unsupported file format. Please upload LAS, CSV, or XLSX.');
@@ -90,7 +110,7 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
         filename: file.name,
         headers,
         data,
-        units: Array(headers.length).fill(''), // leave blank; user can map later
+        units,
         customerName,
         wellName,
         dataType,
@@ -106,6 +126,7 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
       alert('Error processing file. Please try again.');
     }
   };
+
 
   // Handle file drop
   const handleDrop = useCallback((e: React.DragEvent) => {
