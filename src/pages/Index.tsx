@@ -22,10 +22,10 @@ const Index = () => {
     {
       id: "channelmapping",
       title: "EDGE Channel Mapping Tool",
-      description: "Seemless mapping tool for InterACT-Inside",
+      description: "Seemless sensor data channel mapping tool for InterACT-Inside",
       icon: Settings,
-      status: "Coming Soon",
-      features: ["Data Quality Audit","Channel Auto-mapping"]
+      status: "Available",
+      features: ["Data Quality Audit","Channel Auto-mapping","Channel Bank"]
     },
     {
       id: "wellcount",
@@ -53,7 +53,19 @@ const Index = () => {
         className: "border-green-200 bg-green-50 text-green-800",
       });
       setTimeout(() => window.location.href = "/decimation", 500);
-    } else {
+    } 
+    
+    
+    else if (moduleId === "channelmapping") {
+      toast({
+        title: "✅ Module Launched",
+        description: "Launching Channel Mapping Tool...",
+        className: "border-blue-200 bg-blue-50 text-blue-800",
+      });
+      setTimeout(() => window.location.href = "/ChannelMapping", 500);
+    }
+ 
+    else {
       toast({
         title: "✅ Module Selected",
         description: `${modules.find(m => m.id === moduleId)?.title} coming soon!`,
@@ -153,8 +165,7 @@ const Index = () => {
       <footer className="border-t bg-muted/30 py-8">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <p className="text-muted-foreground">
-            Built for drilling engineers, by drilling engineers. 
-            Professional data analysis tools for the oil & gas industry.
+            Disclaimer: This application is only for SLB Digital Drilling Hub usage
           </p>
         </div>
       </footer>
