@@ -14,6 +14,51 @@ type ColumnMappingProps = {
   }>) => void;
 };
 
+// Function to normalize and standardize units from uploaded file
+const replaceUnit = (unit: string | undefined): string | undefined => {
+  if (!unit) return unit;
+
+  // Normalize value: lowercase, remove spaces/underscores/dots, unify special chars
+  const normalize = (val: string) =>
+    val
+      .toLowerCase()
+      .replace(/\s|_|\.|-/g, "") // remove spaces, underscores, dots, dashes
+      .replace(/³/g, "3")        // replace superscript ³ with 3
+      .replace(/°/g, "");        // remove degree symbol (so "°c" => "c")
+
+  const val = normalize(unit);
+
+  // Variations (all normalized, so no °, spaces, underscores)
+  const tonneVariation = ["tonne", "ton", "t", "metrictonne", "tmetric", "tf"];
+  const torqueVariation = ["knm"]; // "kN.m" will normalize to "knm"
+  const tempVariationF = ["f"];    // both "f" and "°f" normalize to "f"
+  const tempVariationC = ["c"];    // both "c" and "°c" normalize to "c"
+  const densityVariation = ["lbmft3"]; // "lbm/ft³" => "lbmft3"
+  const apiVariation = ["api"];
+  const timeVariation = ["sec", "s"];
+
+  if (tonneVariation.includes(val)) {
+    return "1000 kgf";
+  } else if (torqueVariation.includes(val)) {
+    return "1000 N.m";
+  } else if (tempVariationF.includes(val)) {
+    return "degF";
+  } else if (tempVariationC.includes(val)) {
+    return "degC";
+  } else if (densityVariation.includes(val)) {
+    return "lbm/gal";
+  } else if (apiVariation.includes(val)) {
+    return "gAPI";
+  } else if (timeVariation.includes(val)) {
+    return "h";
+  }
+
+  // No match → return original unit untouched
+  return unit;
+};
+
+
+
 export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMappingProps) => {
   // State for mappings
   const [mappings, setMappings] = useState(() => {
@@ -34,14 +79,23 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
         );
       }
 
+      const originalUnit = data.units[index] || '';
+
+      // Always process the unit, regardless of channel match
+      const standardizedUnit = replaceUnit(originalUnit) || originalUnit;
+
       return {
         original: header,
         mapped: matchedChannel ? matchedChannel.standardName : '',
-        originalUnit: data.units[index] || '',
-        mappedUnit: matchedChannel ? data.units[index] || '' : ''
+        originalUnit,
+        mappedUnit: standardizedUnit // always use standardized or fallback original
       };
     });
   });
+
+
+
+
 
   const [toast, setToast] = useState<string | null>(null); // Toast state
 
@@ -63,11 +117,23 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
   };
 
   const handleComplete = () => {
-    onMappingComplete(mappings);
+    onMappingComplete(
+    mappings.map(m => ({
+      original: m.original,
+      mapped: m.mapped,
+      originalUnit: replaceUnit(m.originalUnit),
+      mappedUnit: replaceUnit(m.mappedUnit),
+    }))
+  );
+
   };
 
   const standardChannels = channelBank.map(c => c.standardName);
-  const standardUnits = ["ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec"];
+  const standardUnits = [
+    "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
+    "1000 kgf", "1000 N.m", "degC", "degF", "lbm/gal", "gAPI", "m/h"
+  ];
+
 
   return (
     <div className="space-y-6 relative">
@@ -135,7 +201,9 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                   <select
                     value={mapping.mappedUnit}
                     onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
-                    className="w-full p-2 border border-border rounded bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
+                      standardUnits.includes(mapping.mappedUnit) ? 'bg-green-200' : 'bg-red-200'
+                    }`}
                   >
                     <option value="">Select unit...</option>
                     {standardUnits.map(unit => (
@@ -143,6 +211,10 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                     ))}
                   </select>
                 </div>
+
+
+
+
 
                 {/* Trash icon */}
                 <div className="flex justify-center">
