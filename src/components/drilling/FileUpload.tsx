@@ -28,8 +28,9 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
 
   // Process uploaded file
   const processFile = async (file: File) => {
-    if (!customerName || !wellName) {
-      alert('Please enter customer name and well name before uploading a file.');
+    // Validation: customer name and well name
+    if (!customerName.trim() || !wellName.trim()) {
+      alert("Please input both Customer Name and Well Name before uploading file");
       return;
     }
 

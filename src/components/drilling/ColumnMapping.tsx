@@ -33,7 +33,7 @@ const replaceUnit = (unit: string | undefined): string | undefined => {
   const torqueVariation = ["knm"]; // "kN.m" will normalize to "knm"
   const tempVariationF = ["f"];    // both "f" and "°f" normalize to "f"
   const tempVariationC = ["c"];    // both "c" and "°c" normalize to "c"
-  const densityVariation = ["lbmft3"]; // "lbm/ft³" => "lbmft3"
+  const densityVariation = ["lbmft3","lbm/ft³"]; // "lbm/ft³" => "lbmft3"
   const apiVariation = ["api"];
   const timeVariation = ["sec", "s"];
 
@@ -62,6 +62,9 @@ const replaceUnit = (unit: string | undefined): string | undefined => {
 export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMappingProps) => {
   // State for mappings
   const [mappings, setMappings] = useState(() => {
+    // Sort headers alphabetically
+    const sortedHeaders = [...data.headers].sort((a, b) => a.localeCompare(b));
+    
     return data.headers.map((header, index) => {
       const headerLower = header.toLowerCase().trim();
 
@@ -117,13 +120,20 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
   };
 
   const handleComplete = () => {
+    const incomplete = mappings.some(m => !m.mapped || !m.mappedUnit);
+
+    if (incomplete) {
+      alert("Please complete all the channels and units mapping to proceed");
+      return;
+    }
+
     onMappingComplete(
-    mappings.map(m => ({
-      original: m.original,
-      mapped: m.mapped,
-      originalUnit: replaceUnit(m.originalUnit),
-      mappedUnit: replaceUnit(m.mappedUnit),
-    }))
+      mappings.map(m => ({
+        original: m.original,
+        mapped: m.mapped,
+        originalUnit: m.originalUnit,
+        mappedUnit: m.mappedUnit,
+      }))
   );
 
   };
@@ -131,7 +141,8 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
   const standardChannels = channelBank.map(c => c.standardName);
   const standardUnits = [
     "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
-    "1000 kgf", "1000 N.m", "degC", "degF", "lbm/gal", "gAPI", "m/h"
+    "1000 kgf", "1000 N.m", "degC", "degF", "lbm/gal", "gAPI", "m/h",
+    "bbl","h","lbm/ft³","ppm","gpm","spm","rpm","lbf·ft","%","psi"
   ];
 
 
