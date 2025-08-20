@@ -114,17 +114,16 @@ export const DrillingInterface = () => {
             <FileUpload 
               onFileProcessed={(fileData) => {
                 setData(fileData);
-                handleNext();
               }}
             />
           )}
           
           {currentStep === 1 && data && (
-            <DataAudit 
+            <DataAudit
               data={data}
               onAuditComplete={(auditResults) => {
+                // Store the audit results but DO NOT move to next step automatically
                 updateData({ auditResults });
-                handleNext();
               }}
             />
           )}
@@ -184,7 +183,7 @@ export const DrillingInterface = () => {
             Previous
           </button>
           
-          {currentStep < 4 && (
+          {currentStep !== 1 && currentStep < 4 && (
             <button
               onClick={handleNext}
               disabled={!data}
