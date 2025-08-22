@@ -87,12 +87,15 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
       // Always process the unit, regardless of channel match
       const standardizedUnit = replaceUnit(originalUnit) || originalUnit;
 
+      const mappedName = matchedChannel ? matchedChannel.standardName : '';
       return {
         original: header,
-        mapped: matchedChannel ? matchedChannel.standardName : '',
+        mapped: mappedName,
         originalUnit,
-        mappedUnit: standardizedUnit // always use standardized or fallback original
+        mappedUnit: mappedName === "TIME" ? "" : standardizedUnit,
+        manualEdit: false
       };
+
     });
   });
 
@@ -105,9 +108,20 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
   // Update a mapping field
   const updateMapping = (index: number, field: 'mapped' | 'mappedUnit', value: string) => {
     const newMappings = [...mappings];
-    newMappings[index] = { ...newMappings[index], [field]: value };
+    let updated = { ...newMappings[index], [field]: value };
+
+    // Special rule: if channel mapped as TIME, force unit = ""
+    if (field === "mapped" && value === "TIME") {
+      updated.mappedUnit = "";
+    }
+    if (updated.mapped === "TIME") {
+      updated.mappedUnit = "";
+    }
+
+    newMappings[index] = updated;
     setMappings(newMappings);
   };
+
 
   // Handle removing a mapping row
   const removeMapping = (index: number) => {
@@ -132,14 +146,15 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
         original: m.original,
         mapped: m.mapped,
         originalUnit: m.originalUnit,
-        mappedUnit: m.mappedUnit,
+        mappedUnit: m.mapped === "TIME" ? "" : m.mappedUnit,
       }))
-  );
+    );
+
 
   };
 
   const standardChannels = channelBank.map(c => c.standardName);
-  const standardUnits = [
+  const standardUnits = ["",
     "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
     "1000 kgf", "1000 N.m", "degC", "degF", "lbm/gal", "gAPI", "m/h",
     "bbl","h","lbm/ft³","ppm","gpm","spm","rpm","lbf·ft","%","psi"
@@ -192,43 +207,99 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                 <div className="font-medium text-foreground">{mapping.original}</div>
 
                 <div>
-                  <select
-                    value={mapping.mapped}
-                    onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
-                    className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
-                      matched ? 'bg-green-200' : 'bg-red-200'
-                    }`}
-                  >
-                    <option value="">Select channel...</option>
-                    {standardChannels.map(channel => (
-                      <option key={channel} value={channel}>{channel}</option>
-                    ))}
-                  </select>
+                  {mapping.manualEdit ? (
+                    <input
+                      type="text"
+                      value={mapping.mapped}
+                      onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
+                      className="w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Enter channel name"
+                    />
+                  ) : (
+                    <select
+                      value={mapping.mapped}
+                      onChange={(e) => updateMapping(index, 'mapped', e.target.value)}
+                      className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        mapping.mapped ? 'bg-green-200' : 'bg-red-200'
+                      }`}
+                    >
+                      <option value="">Select channel...</option>
+                      {standardChannels.map(channel => (
+                        <option key={channel} value={channel}>{channel}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
+
 
                 <div className="text-muted-foreground">{mapping.originalUnit || "N/A"}</div>
 
                 <div>
-                  <select
-                    value={mapping.mappedUnit}
-                    onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
-                    className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
-                      standardUnits.includes(mapping.mappedUnit) ? 'bg-green-200' : 'bg-red-200'
-                    }`}
-                  >
-                    <option value="">Select unit...</option>
-                    {standardUnits.map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </select>
+                  {mapping.mapped === "TIME" ? (
+                    <input
+                      type="text"
+                      value={mapping.mappedUnit}
+                      onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
+                      className="w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="(optional)"
+                    />
+                  ) : mapping.manualEdit ? (
+                    <input
+                      type="text"
+                      value={mapping.mappedUnit}
+                      onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
+                      className="w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
+                      placeholder="Enter unit"
+                    />
+                  ) : (
+                    <select
+                      value={mapping.mappedUnit}
+                      onChange={(e) => updateMapping(index, 'mappedUnit', e.target.value)}
+                      className={`w-full p-2 border border-border rounded text-foreground focus:ring-2 focus:ring-primary focus:border-transparent ${
+                        standardUnits.includes(mapping.mappedUnit) ? 'bg-green-200' : 'bg-red-200'
+                      }`}
+                    >
+                      <option value="">Select unit...</option>
+                      {standardUnits.map(unit => (
+                        <option key={unit} value={unit}>{unit}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
 
 
 
 
 
-                {/* Trash icon */}
-                <div className="flex justify-center">
+
+
+
+
+                <div className="flex justify-center items-center space-x-2 text-center">
+                  <button
+                    onClick={() => {
+                      const newMappings = [...mappings];
+                      newMappings[index].manualEdit = !newMappings[index].manualEdit;
+                      setMappings(newMappings);
+                    }}
+                    className="p-1 hover:bg-background rounded"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-5 h-5 text-muted-foreground"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L7.5 21H3v-4.5L16.732 3.732z"
+                      />
+                    </svg>
+                  </button>
+
                   <button
                     onClick={() => removeMapping(index)}
                     className="p-1 hover:bg-background rounded"
@@ -236,6 +307,7 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
                     <Trash className="w-5 h-5 text-muted-foreground" />
                   </button>
                 </div>
+
               </div>
             );
           })}

@@ -183,7 +183,7 @@ export const DrillingInterface = () => {
             Previous
           </button>
           
-          {currentStep !== 1 && currentStep < 4 && (
+          {currentStep < 4 && (
             <button
               onClick={handleNext}
               disabled={!data}
