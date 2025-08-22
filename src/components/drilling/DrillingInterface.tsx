@@ -131,7 +131,8 @@ export const DrillingInterface = () => {
           {currentStep === 2 && data && data.dataType === 'time' && (
             <TimestampFormat 
               data={data}
-              onFormatComplete={() => handleNext()}
+              onClick={handleNext}
+              //onFormatComplete={() => handleNext()}
             />
           )}
 
