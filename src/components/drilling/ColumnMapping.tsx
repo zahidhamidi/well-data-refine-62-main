@@ -183,15 +183,18 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
 
       {/* Table */}
       <div className="bg-card border rounded-lg overflow-hidden">
-        <div className="bg-table-header text-black p-4">
-          <div className="grid grid-cols-5 gap-4 font-medium">
+        <div className="bg-blue-600 text-white p-4">
+          <div className="grid grid-cols-5 gap-4 font-medium text-center">
             <div>Original Header</div>
             <div>Mapped Channel</div>
             <div>Original Unit</div>
             <div>Mapped Unit</div>
-            <div>Action</div>
+            <div>Actions</div>
           </div>
         </div>
+
+
+
 
         <div className="divide-y divide-border">
           {mappings.map((mapping, index) => {
