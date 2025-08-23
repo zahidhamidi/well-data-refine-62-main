@@ -50,7 +50,7 @@ export const defaultChannels: ChannelBankItem[] = [
   {
     id: '7',
     standardName: 'ML_DMEA',
-    aliases: ['dmea', 'hole depth']
+    aliases: ['dmea', 'hole depth','tmd']
   },
   {
     id: '8',

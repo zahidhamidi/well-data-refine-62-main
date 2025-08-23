@@ -6,13 +6,17 @@ import { ChannelBankItem } from './ChannelBank';
 type ColumnMappingProps = {
   data: DrillingData;
   channelBank: ChannelBankItem[];
-  onMappingComplete: (mappings: Array<{
-    original: string;
-    mapped: string;
-    originalUnit: string;
-    mappedUnit: string;
-  }>) => void;
+  onMappingComplete: (
+    mappings: Array<{
+      original: string;
+      mapped: string;
+      originalUnit: string;
+      mappedUnit: string;
+    }>,
+    mappedData: any[]
+  ) => void;
 };
+
 
 // Utility to normalize units
 const replaceUnit = (unit?: string): string | undefined => {
@@ -71,7 +75,7 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
         original: header,
         mapped: mappedName,
         originalUnit,
-        mappedUnit: mappedName === "TIME" ? "" : standardizedUnit,
+        mappedUnit: mappedName === "TIME" ? "N/A" : standardizedUnit,
         manualEdit: false
       };
     });
@@ -100,18 +104,34 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
       alert("Please complete all the channels and units mapping to proceed");
       return;
     }
-    onMappingComplete(
-      mappings.map(m => ({
-        original: m.original,
-        mapped: m.mapped,
-        originalUnit: m.originalUnit,
-        mappedUnit: m.mapped === "TIME" ? "" : m.mappedUnit,
-      }))
-    );
+
+    const finalMappings = mappings.map(m => ({
+      original: m.original,
+      mapped: m.mapped,
+      originalUnit: m.originalUnit,
+      mappedUnit: m.mapped === "TIME" ? "" : m.mappedUnit,
+    }));
+
+    // 🔑 Build new mapped dataset
+    const mappedData = data.data.map((row) => {
+      const newRow: Record<string, any> = {};
+      finalMappings.forEach((m) => {
+        if (Array.isArray(row)) {
+          const colIndex = data.headers.indexOf(m.original);
+          newRow[m.mapped] = colIndex >= 0 ? row[colIndex] : null;
+        } else {
+          newRow[m.mapped] = row[m.original] ?? null;
+        }
+      });
+      return newRow;
+    });
+
+    onMappingComplete(finalMappings, mappedData);
   };
 
+
   const standardChannels = channelBank?.map(c => c.standardName) || [];
-  const standardUnits = ["", "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
+  const standardUnits = ["N/A", "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
     "1000 kgf", "1000 N.m", "degC", "degF", "lbm/gal", "gAPI", "m/h", "bbl", "h",
     "lbm/ft³", "ppm", "gpm", "spm", "rpm", "lbf·ft", "%", "psi"];
 

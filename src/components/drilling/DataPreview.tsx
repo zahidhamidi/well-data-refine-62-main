@@ -125,10 +125,6 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
               <span className="text-muted-foreground">Mapped columns:</span>
               <span className="font-medium text-success">{mappedHeaders.length}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Data completeness:</span>
-              <span className="font-medium">{data.auditResults?.completeness}%</span>
-            </div>
           </div>
         </div>
 
@@ -220,7 +216,7 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
 
         <div className="overflow-x-auto max-h-96">
           <table className="w-full">
-            <thead className="bg-table-header text-white sticky top-0">
+            <thead className="bg-gray-800 text-white sticky top-0">
               <tr>
                 {mappedHeaders.map((header, index) => (
                   <th key={index} className="px-4 py-3 text-left font-medium">
@@ -240,7 +236,7 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
                 >
                   {mappedHeaders.map((header, colIndex) => (
                     <td key={colIndex} className="px-4 py-2 text-sm">
-                      {row[header.original] || '-'}
+                      {row[header.mapped] ?? '-'}
                     </td>
                   ))}
                 </tr>

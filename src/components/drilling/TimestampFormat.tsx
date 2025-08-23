@@ -74,16 +74,18 @@ export const TimestampFormat = ({ data, onFormatComplete }: TimestampFormatProps
       });
 
       return sampleTimestamps.map(ts => {
-        let originalValue = ts ?? "";
+        // Always keep the untouched value for Original
+        const rawOriginal = ts ?? "";
+
         let formattedTs: string = "Invalid Format";
 
-        if (originalValue === "") {
+        if (rawOriginal === "") {
           return { column, original: "No data available", formatted: "N/A" };
         }
 
         try {
           let parsedDate: Date;
-          const numericValue = parseFloat(originalValue as any);
+          const numericValue = parseFloat(rawOriginal as any);
           switch (formatValue) {
             case "unix-s":
               parsedDate = fromUnixTime(numericValue);
@@ -106,22 +108,24 @@ export const TimestampFormat = ({ data, onFormatComplete }: TimestampFormatProps
               parsedDate = new Date(today.getTime() + numericValue * 1000);
               break;
             default:
-              parsedDate = parse(String(originalValue), formatValue, new Date());
+              parsedDate = parse(String(rawOriginal), formatValue, new Date());
               break;
           }
           if (!isNaN(parsedDate.getTime())) {
             formattedTs = format(parsedDate, "dd/MM/yyyy HH:mm:ss");
           }
         } catch (e) {
-          // keep "Invalid Format"
+          // leave as "Invalid Format"
         }
 
-        return { column, original: String(originalValue), formatted: formattedTs };
+        // 🔑 Use rawOriginal untouched for Original
+        return { column, original: String(rawOriginal), formatted: formattedTs };
       });
     });
 
-    setFormattedDataPreview(preview);
-  };
+
+      setFormattedDataPreview(preview);
+    };
 
   // Column change handler (auto-detect first selected column format)
   const handleColumnChange = (values: string[]) => {
@@ -188,43 +192,55 @@ export const TimestampFormat = ({ data, onFormatComplete }: TimestampFormatProps
         if (type === "progress") {
           setProgress(p);
         } else if (type === "done") {
-          setProgress(100);
+        setProgress(100);
 
-          // Always ensure headers are a safe array
-          const safeHeaders = Array.isArray(headers) && headers.length > 0
-            ? headers
-            : Array.isArray(data.headers)
-            ? data.headers
-            : [];
+        // Always ensure headers are a safe array
+        const safeHeaders = Array.isArray(headers) && headers.length > 0
+          ? headers
+          : Array.isArray(data.headers)
+          ? data.headers
+          : [];
 
-          // Always ensure rows are a safe array
-          const safeRows = Array.isArray(rows) ? rows : [];
+        // Always ensure rows are a safe array
+        const safeRows = Array.isArray(rows) ? rows : [];
 
-          setFormattedTable({ headers: safeHeaders, data: safeRows });
-          setIsFormatting(false);
+        // ⬇️ FIX HERE: normalize rows into objects
+        const updatedRows = safeRows.map((row) => {
+          if (Array.isArray(row)) {
+            const obj: Record<string, any> = {};
+            safeHeaders.forEach((h, i) => {
+              obj[h] = row[i];
+            });
+            return obj;
+          }
+          return row; // already an object
+        });
 
-          // Build a fully safe DrillingData object
-          const postFormattedTable: DrillingData = {
-            filename: data.filename || "",
-            headers: safeHeaders,
-            data: safeRows,
-            units: Array.isArray(data.units) ? data.units : [],
-            customerName: data.customerName || "",
-            wellName: data.wellName || "",
-            dataType: data.dataType || "time",
-            originalLasHeader: data.originalLasHeader,
-            auditResults: data.auditResults
-              ? { ...data.auditResults, timestampFormat: "dd/MM/yyyy HH:mm:ss" }
-              : { completeness: 0, conformity: false, continuity: false, timestampFormat: "dd/MM/yyyy HH:mm:ss" },
-          };
+        setFormattedTable({ headers: safeHeaders, data: safeRows });
+        setIsFormatting(false);
 
-          console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
+        // Build a fully safe DrillingData object
+        const postFormattedTable: DrillingData = {
+          filename: data.filename || "",
+          headers: safeHeaders,
+          data: updatedRows,   // ✅ always object rows
+          units: Array.isArray(data.units) ? data.units : [],
+          customerName: data.customerName || "",
+          wellName: data.wellName || "",
+          dataType: data.dataType || "time",
+          originalLasHeader: data.originalLasHeader,
+          auditResults: data.auditResults
+            ? { ...data.auditResults, timestampFormat: "dd/MM/yyyy HH:mm:ss" }
+            : { completeness: 0, conformity: false, continuity: false, timestampFormat: "dd/MM/yyyy HH:mm:ss" },
+        };
 
-          onFormatComplete(postFormattedTable);
+        console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
 
-          worker.terminate();
-          workerRef.current = null;
-        }
+        onFormatComplete(postFormattedTable);
+
+        worker.terminate();
+        workerRef.current = null;
+      }
 
       };
 

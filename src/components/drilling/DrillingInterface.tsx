@@ -178,11 +178,12 @@ export const DrillingInterface = () => {
             <ColumnMapping 
               data={data}
               channelBank={defaultChannels}
-              onMappingComplete={(mappedColumns) => {
-                updateData({ mappedColumns });
+              onMappingComplete={(mappedColumns, mappedData) => {
+                updateData({ mappedColumns, data: mappedData }); // 🔑 overwrite raw rows with mapped dataset
                 handleNext();
               }}
             />
+
           )}
 
 
