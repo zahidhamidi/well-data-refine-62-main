@@ -189,23 +189,43 @@ export const TimestampFormat = ({ data, onFormatComplete }: TimestampFormatProps
           setProgress(p);
         } else if (type === "done") {
           setProgress(100);
-          setFormattedTable({ headers: headers ?? data.headers, data: rows });
+
+          // Always ensure headers are a safe array
+          const safeHeaders = Array.isArray(headers) && headers.length > 0
+            ? headers
+            : Array.isArray(data.headers)
+            ? data.headers
+            : [];
+
+          // Always ensure rows are a safe array
+          const safeRows = Array.isArray(rows) ? rows : [];
+
+          setFormattedTable({ headers: safeHeaders, data: safeRows });
           setIsFormatting(false);
 
-          // Build a DrillingData-like payload if you want to pass back to parent
-          const updatedData: DrillingData = {
-            ...data,
-            data: rows,
-            headers: headers ?? data.headers,
+          // Build a fully safe DrillingData object
+          const postFormattedTable: DrillingData = {
+            filename: data.filename || "",
+            headers: safeHeaders,
+            data: safeRows,
+            units: Array.isArray(data.units) ? data.units : [],
+            customerName: data.customerName || "",
+            wellName: data.wellName || "",
+            dataType: data.dataType || "time",
+            originalLasHeader: data.originalLasHeader,
             auditResults: data.auditResults
               ? { ...data.auditResults, timestampFormat: "dd/MM/yyyy HH:mm:ss" }
               : { completeness: 0, conformity: false, continuity: false, timestampFormat: "dd/MM/yyyy HH:mm:ss" },
           };
-          onFormatComplete(updatedData);
+
+          console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
+
+          onFormatComplete(postFormattedTable);
 
           worker.terminate();
           workerRef.current = null;
         }
+
       };
 
       worker.onerror = (err) => {

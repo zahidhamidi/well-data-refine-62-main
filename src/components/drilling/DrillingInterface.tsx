@@ -20,13 +20,10 @@ export type DrillingData = {
   wellName?: string;
   dataType?: 'depth' | 'time';
   originalLasHeader?: string;
-  auditResults?: {
-    completeness: number;
-    conformity: boolean;
-    continuity: boolean;
-    timestampFormat?: string;
-  };
+
+
   mappedColumns?: Array<{
+
     original: string;
     mapped: string;
     originalUnit: string;
@@ -68,8 +65,24 @@ export const DrillingInterface = () => {
 
 
   const updateData = (newData: Partial<DrillingData>) => {
-    setData(prev => prev ? { ...prev, ...newData } : null);
+    setData(prev => {
+      // If there was already data, merge it with the new data
+      if (prev) {
+        return { ...prev, ...newData };
+      }
+
+      // If there was no previous data, initialize a new DrillingData object
+      return {
+        filename: "",
+        headers: [],
+        data: [],
+        units: [],
+        ...newData, // Overwrite with whatever is passed in
+      } as DrillingData;
+    });
   };
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -127,14 +140,20 @@ export const DrillingInterface = () => {
               }}
             />
           )}
+
+
           
-          {currentStep === 2 && data && data.dataType === 'time' && (
-            <TimestampFormat 
+          {currentStep === 2 && data?.dataType === "time" && (
+            <TimestampFormat
               data={data}
-              onClick={handleNext}
-              //onFormatComplete={() => handleNext()}
+              onFormatComplete={(postFormattedTable) => {
+                updateData(postFormattedTable); 
+                // ❌ no handleNext() here
+              }}
             />
           )}
+
+
 
           {currentStep === 2 && data && data.dataType === 'depth' && (
             <div className="text-center py-8">
@@ -153,6 +172,8 @@ export const DrillingInterface = () => {
             </div>
           )}
           
+
+
           {currentStep === 3 && data && (
             <ColumnMapping 
               data={data}
@@ -163,6 +184,8 @@ export const DrillingInterface = () => {
               }}
             />
           )}
+
+
           
           {currentStep === 4 && data && (
             <DataPreview 
