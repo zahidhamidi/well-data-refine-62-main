@@ -8,29 +8,35 @@ export default function ChannelBankPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-8">
-        <header className="mb-8 flex items-center justify-between">
+      {/* Full-width blue header */}
+      <header className="w-full bg-[#0033A0] text-white py-6 shadow">
+        <div className="container mx-auto flex items-center justify-between px-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Channel Bank Management
+            <h1 className="text-3xl font-bold mb-2">
+              Channel Bank Configuration
             </h1>
-            <p className="text-muted-foreground">
-              Manage standard channel names and aliases for drilling data mapping
+            <p>
+              Manage standard channel names and aliases for drilling channel mapping
             </p>
           </div>
           <Button
             onClick={() => navigate("/ChannelMapping")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 bg-white text-blue-600 hover:bg-gray-100"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Channel Mapping
           </Button>
-        </header>
+        </div>
+      </header>
 
+      {/* Page content */}
+      <div className="container mx-auto py-8">
         <div className="bg-card rounded-lg border p-6">
           <ChannelBank />
         </div>
       </div>
     </div>
+
+
   );
 }

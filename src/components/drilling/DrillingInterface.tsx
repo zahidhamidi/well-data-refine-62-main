@@ -11,6 +11,9 @@ import { DataPreview } from "./DataPreview";
 import { ChannelBankItem, defaultChannels } from "./ChannelBank";
 import { ArrowLeft, Upload, BarChart3, Settings,House,Download, CheckCircle, AlertCircle, XCircle, ChevronLeft } from "lucide-react";
 
+
+
+
 export type DrillingData = {
   filename: string;
   headers: string[];
@@ -50,6 +53,12 @@ export const DrillingInterface = () => {
   const [channelBank, setChannelBank] = useState<ChannelBankItem[]>([]);
   const [timestampState, setTimestampState] = useState<any>(null);
   const [mappingState, setMappingState] = useState<any>(null);
+  const [customerName, setCustomerName] = useState('');
+  const [wellName, setWellName] = useState('');
+  const [dataType, setDataType] = useState<'depth' | 'time'>('depth');
+  const [dataOrigin, setDataOrigin] = useState<'ML' | 'GS'>('ML');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
 
 
   const handleNext = () => {
@@ -92,7 +101,7 @@ export const DrillingInterface = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
-        <header className="mb-8 flex items-center justify-between bg-blue-900 text-white px-6 py-4 rounded-lg shadow">
+        <header className="mb-8 flex items-center justify-between bg-blue-900 text-white px-6 py-4 shadow">
           {/* Left side: icon + text */}
           <div className="flex items-center gap-4">
             <Button 
@@ -115,7 +124,7 @@ export const DrillingInterface = () => {
           {/* Right side: Channel Bank button */}
           <Button
             onClick={() => navigate("/channel-bank")}
-            className="flex items-center gap-2 px-3 py-1 border border-white text-white hover:bg-blue-800"
+            className="flex items-center gap-2 px-3 py-1 border border-white text-white hover:bg-blue-600"
           >
             <Database className="w-4 h-4" />
             Channel Bank
@@ -129,11 +138,22 @@ export const DrillingInterface = () => {
 
         <div className="bg-card rounded-lg border p-6">
           {currentStep === 0 && (
-            <FileUpload 
+            <FileUpload
+              customerName={customerName}
+              setCustomerName={setCustomerName}
+              wellName={wellName}
+              setWellName={setWellName}
+              dataType={dataType}
+              setDataType={setDataType}
+              dataOrigin={dataOrigin}
+              setDataOrigin={setDataOrigin}
+              file={uploadedFile}
+              setFile={setUploadedFile}
               onFileProcessed={(fileData) => {
                 setData(fileData);
               }}
             />
+
           )}
           
           {currentStep === 1 && data && (
