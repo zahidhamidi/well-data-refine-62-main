@@ -161,15 +161,7 @@ export const FileUpload = ({ onFileProcessed }: FileUploadProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Upload Drilling Data File
-        </h2>
-        <p className="text-muted-foreground">
-          Enter project details and upload your LAS, XLSX, or CSV file containing drilling sensor data
-        </p>
-      </div>
-
+ 
       {/* Customer and Well Information */}
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-2">

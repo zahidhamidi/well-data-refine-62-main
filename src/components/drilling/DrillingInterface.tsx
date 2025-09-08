@@ -36,11 +36,11 @@ export type DrillingData = {
 
 
 const steps = [
-  { id: 0, title: "File Upload", description: "Upload LAS, XLSX, or CSV file" },
-  { id: 1, title: "Data Audit", description: "Quality and conformity check" },
-  { id: 2, title: "Timestamp Format", description: "Standardize timestamp format" },
-  { id: 3, title: "Column Mapping", description: "Map channels to standard names" },
-  { id: 4, title: "Preview & Export", description: "Review and export mapped data" },
+  { id: 0, title: "File Upload" },
+  { id: 1, title: "Data Audit" },
+  { id: 2, title: "Timestamp Format" },
+  { id: 3, title: "Column Mapping" },
+  { id: 4, title: "Preview & Export" },
 ];
 
 export const DrillingInterface = () => {
@@ -48,12 +48,17 @@ export const DrillingInterface = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [data, setData] = useState<DrillingData | null>(null);
   const [channelBank, setChannelBank] = useState<ChannelBankItem[]>([]);
+  const [timestampState, setTimestampState] = useState<any>(null);
+  const [mappingState, setMappingState] = useState<any>(null);
+
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep < 4)  {
       setCurrentStep(currentStep + 1);
     }
+    // do nothing if currentStep === 3
   };
+
 
   const handlePrevious = () => {
     if (currentStep > 0) {
@@ -87,21 +92,21 @@ export const DrillingInterface = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8">
-        <header className="mb-8 flex items-center justify-between">
+        <header className="mb-8 flex items-center justify-between bg-blue-900 text-white px-6 py-4 rounded-lg shadow">
           {/* Left side: icon + text */}
-          <div className="flex items-start gap-4">
+          <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
               onClick={() => {
                 setTimeout(() => navigate("/"), 500);
               }}
-              className="text-muted-foreground hover:text-foreground mt-1"
+              className="text-white hover:text-gray-200 mt-1"
             >
               <House className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground mb-2">
-                EDGE Channel Mapping Tool
+              <h1 className="text-2xl font-bold text-white">
+                EDGE Drilling Channel Mapping Tool
               </h1>
               
             </div>
@@ -110,7 +115,7 @@ export const DrillingInterface = () => {
           {/* Right side: Channel Bank button */}
           <Button
             onClick={() => navigate("/channel-bank")}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 px-3 py-1 border border-white text-white hover:bg-blue-800"
           >
             <Database className="w-4 h-4" />
             Channel Bank
@@ -146,12 +151,14 @@ export const DrillingInterface = () => {
           {currentStep === 2 && data?.dataType === "time" && (
             <TimestampFormat
               data={data}
+              savedState={timestampState}             // pass saved state
+              onSaveState={setTimestampState}         // let child update parent
               onFormatComplete={(postFormattedTable) => {
-                updateData(postFormattedTable); 
-                // ❌ no handleNext() here
+                updateData(postFormattedTable);
               }}
             />
           )}
+
 
 
 
@@ -178,13 +185,15 @@ export const DrillingInterface = () => {
             <ColumnMapping 
               data={data}
               channelBank={defaultChannels}
+              savedState={mappingState}              // pass saved state
+              onSaveState={setMappingState}          // let child update parent
               onMappingComplete={(mappedColumns, mappedData) => {
-                updateData({ mappedColumns, data: mappedData }); // 🔑 overwrite raw rows with mapped dataset
+                updateData({ mappedColumns, data: mappedData });
                 handleNext();
               }}
             />
-
           )}
+
 
 
           

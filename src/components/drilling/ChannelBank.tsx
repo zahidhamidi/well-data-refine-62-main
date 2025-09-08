@@ -436,14 +436,6 @@ export const ChannelBank = ({ onChannelBankUpdate }: ChannelBankProps) => {
 
   return (
     <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Channel Bank Database
-        </h2>
-        <p className="text-muted-foreground">
-          Manage standard channel names and their aliases for automatic matching
-        </p>
-      </div>
 
       <div className="flex gap-4 items-center">
         <div className="relative flex-1">

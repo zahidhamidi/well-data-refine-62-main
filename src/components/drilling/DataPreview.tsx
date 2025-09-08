@@ -20,18 +20,9 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
   const displayData = viewMode === 'preview' ? previewData : data.data;
 
   const exportData = () => {
-    // Create mapped data structure
-    const mappedData = data.data.map(row => {
-      const newRow: any = {};
-      mappedHeaders.forEach(header => {
-        newRow[header.mapped] = row[header.original];
-      });
-      return newRow;
-    });
+    // Create LAS content directly from data.data
+    const lasContent = generateLASContent(data.data, mappedHeaders);
 
-    // Create LAS content
-    const lasContent = generateLASContent(mappedData, mappedHeaders);
-    
     // Download file
     const blob = new Blob([lasContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -42,17 +33,17 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     onExport();
   };
 
-  const generateLASContent = (mappedData: any[], headers: any[]) => {
+  const generateLASContent = (rows: any[], headers: any[]) => {
     let content = '';
-    
+
     // Use original LAS header if available
     if (data.originalLasHeader) {
       content = data.originalLasHeader + '\n';
-      
+
       // Update well information in header if provided
       if (data.customerName || data.wellName) {
         const lines = content.split('\n');
@@ -86,101 +77,23 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
       content += `Processing date: ${new Date().toISOString()}\n`;
       content += `~ASCII\n`;
     }
-    
+
     // Data section
-    mappedData.forEach(row => {
-      content += headers.map(h => row[h.mapped] || '').join('\t') + '\n';
+    rows.forEach(row => {
+      content += headers.map(h => row[h.mapped] ?? '').join('\t') + '\n';
     });
-    
+
     return content;
   };
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Data Preview & Export
-        </h2>
-        <p className="text-muted-foreground">
-          Review the mapped data before exporting to LAS format
-        </p>
+
+
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="bg-card border rounded-lg p-4">
-          <h3 className="font-medium text-foreground mb-3 flex items-center">
-            <FileText className="w-5 h-5 mr-2" />
-            Processing Summary
-          </h3>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Original file:</span>
-              <span className="font-medium">{data.filename}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total rows:</span>
-              <span className="font-medium">{data.data.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Mapped columns:</span>
-              <span className="font-medium text-success">{mappedHeaders.length}</span>
-            </div>
-          </div>
-        </div>
 
-        <div className="bg-card border rounded-lg p-4">
-          <h3 className="font-medium text-foreground mb-3">Column Mappings</h3>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
-            {mappedHeaders.map((header, index) => (
-              <div key={index} className="text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{header.original}</span>
-                  <span className="font-medium text-primary">{header.mapped}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-card border rounded-lg p-4">
-          <h3 className="font-medium text-foreground mb-3">Export Options</h3>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="headers"
-                defaultChecked
-                className="w-4 h-4 text-primary"
-              />
-              <label htmlFor="headers" className="text-sm text-foreground">
-                Include headers
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="units"
-                defaultChecked
-                className="w-4 h-4 text-primary"
-              />
-              <label htmlFor="units" className="text-sm text-foreground">
-                Include units
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="metadata"
-                defaultChecked
-                className="w-4 h-4 text-primary"
-              />
-              <label htmlFor="metadata" className="text-sm text-foreground">
-                Include metadata
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div className="bg-card border rounded-lg">
         <div className="border-b border-border p-4">
@@ -246,15 +159,52 @@ export const DataPreview = ({ data, onExport }: DataPreviewProps) => {
         </div>
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center space-x-4">
+        {/* Export LAS */}
         <button
           onClick={exportData}
           className="px-8 py-3 bg-success text-success-foreground rounded-md hover:bg-success/90 flex items-center space-x-2 font-medium"
         >
           <Download className="w-5 h-5" />
-          <span>Export as LAS File</span>
+          <span>LAS Export</span>
+        </button>
+
+        {/* Export CSV */}
+        <button
+          onClick={() => {
+            const headers = mappedHeaders.map(h => h.mapped);
+            const units = mappedHeaders.map(h => h.unit);
+
+            // Build CSV rows
+            const csvRows: string[] = [];
+            csvRows.push(headers.join(","));   // row 1: mapped names
+            csvRows.push(units.join(","));     // row 2: mapped units
+
+            data.data.forEach(row => {
+              const values = mappedHeaders.map(h => row[h.mapped] ?? "");
+              csvRows.push(values.join(","));
+            });
+
+            const csvContent = csvRows.join("\n");
+
+            // Trigger download
+            const blob = new Blob([csvContent], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${data.filename.split('.')[0]}_mapped.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}
+          className="px-8 py-3 bg-primary text-primary-foreground rounded-md hover:bg-primary-hover flex items-center space-x-2 font-medium"
+        >
+          <Download className="w-5 h-5" />
+          <span>CSV Export</span>
         </button>
       </div>
+
     </div>
   );
 };

@@ -82,11 +82,11 @@ const Decimation = () => {
   
 
   const steps = [
-    { id: 1, title: "Upload Data", description: "Upload XLSX or CSV" },
-    { id: 2, title: "Data Audit", description: "Quality assessment and scoring" },
-    { id: 3, title: "Section or Formation", description: "Define sections and formations" },
-    { id: 4, title: "Decimation Config", description: "Configure & Visualize Decimation" },
-    { id: 5, title: "Export", description: "Export as DIF template" }
+    { id: 1, title: "Upload Data"},
+    { id: 2, title: "Data Audit"},
+    { id: 3, title: "Section or Formation Input"},
+    { id: 4, title: "Decimation Configuration"},
+    { id: 5, title: "Export" }
   ];
 
   const REQUIRED_COLUMNS = ["Timestamp", "DMEA", "ROP", "RPM", "TFLO", "WOB"];
@@ -376,17 +376,14 @@ const Decimation = () => {
       case 1:
         return (
           <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">File Uploader</h2>
-              <p className="text-muted-foreground">
-                Upload sensor data file to begin the decimation process
-              </p>
-            </div>
+
 
             {/* Input fields for metadata */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-muted-foreground">Customer Name</label>
+                <label className="block text-sm font-medium text-muted-foreground before:content-['*'] before:text-red-500 before:mr-1">
+                  Customer Name
+                </label>
                 <input
                   type="text"
                   value={customerName}
@@ -396,7 +393,9 @@ const Decimation = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted-foreground">WellGUID</label>
+                <label className="block text-sm font-medium text-muted-foreground before:content-['*'] before:text-red-500 before:mr-1">
+                  WellGUID
+                </label>
                 <input
                   type="text"
                   value={wellGUID}
@@ -406,7 +405,7 @@ const Decimation = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-muted-foreground">Well Name</label>
+                <label className="block text-sm font-medium text-muted-foreground before:content-['*'] before:text-red-500 before:mr-1">Well Name</label>
                 <input
                   type="text"
                   value={wellName}
@@ -892,7 +891,7 @@ const Decimation = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-blue-900 text-white shadow">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -906,15 +905,14 @@ const Decimation = () => {
                   });
                   setTimeout(() => navigate("/"), 500);
                 }}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-white hover:text-gray-200"
               >
                 <House className="h-4 w-4 mr-2" /> {/* Changed icon */}
 
               </Button>
 
               <div>
-                <h1 className="text-2xl font-bold">DrillPlan Sensor Data Decimation Tool</h1>
-                <p className="text-sm text-muted-foreground">Seemless end-to-end data management tool for DrillPlan Data Ingestion</p>
+                <h1 className="text-2xl font-bold text-white">DrillPlan Sensor Data Decimation Tool</h1>
               </div>
             </div>
             

@@ -202,7 +202,7 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
 
       <div className="flex justify-center mt-4">
         <button onClick={handleComplete} className="px-6 py-2 bg-primary text-white rounded-md">
-          <ArrowRight className="w-4 h-4" /> Complete Mapping
+           Complete Mapping
         </button>
       </div>
     </div>

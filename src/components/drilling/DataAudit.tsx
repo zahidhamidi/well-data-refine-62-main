@@ -58,34 +58,6 @@ export const DataAudit = ({ data, onAuditComplete }: DataAuditProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Title */}
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Data Audit
-        </h2>
-        <p className="text-muted-foreground">
-          Data preview and quality checks
-        </p>
-      </div>
-
-      {/* File Summary */}
-      <div className="bg-muted rounded-lg p-4">
-        <h4 className="font-medium text-foreground mb-2">File Summary</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="text-muted-foreground">Filename:</span>
-            <span className="ml-2 font-medium">{data.filename}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Columns:</span>
-            <span className="ml-2 font-medium">{data.headers.length}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Rows:</span>
-            <span className="ml-2 font-medium">{data.data.length}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Data Preview (first 5 rows) */}
       <div className="bg-muted rounded-lg p-4 mt-6">
