@@ -78,23 +78,21 @@ export const DrillingInterface = () => {
   };
 
 
-  const updateData = (newData: Partial<DrillingData>) => {
+  const updateData = (newData: Partial<DrillingData>, replace: boolean = false) => {
     setData(prev => {
-      // If there was already data, merge it with the new data
-      if (prev) {
-        return { ...prev, ...newData };
+      if (replace || !prev) {
+        return {
+          filename: "",
+          headers: [],
+          data: [],
+          units: [],
+          ...newData,
+        } as DrillingData;
       }
-
-      // If there was no previous data, initialize a new DrillingData object
-      return {
-        filename: "",
-        headers: [],
-        data: [],
-        units: [],
-        ...newData, // Overwrite with whatever is passed in
-      } as DrillingData;
+      return { ...prev, ...newData };
     });
   };
+
 
 
 
@@ -171,13 +169,14 @@ export const DrillingInterface = () => {
           {currentStep === 2 && data?.dataType === "time" && (
             <TimestampFormat
               data={data}
-              savedState={timestampState}   // ✅ pass saved state
-              onSaveState={setTimestampState}  // ✅ child updates parent
+              savedState={timestampState}
+              onSaveState={setTimestampState}
               onFormatComplete={(postFormattedTable) => {
-                updateData(postFormattedTable);
+                updateData(postFormattedTable, true); // ✅ overwrite with formatted dataset
               }}
             />
           )}
+
 
 
 
@@ -209,9 +208,14 @@ export const DrillingInterface = () => {
               savedState={mappingState}              // pass saved state
               onSaveState={setMappingState}          // let child update parent
               onMappingComplete={(mappedColumns, mappedData) => {
-                updateData({ mappedColumns, data: mappedData });
+                setData({
+                  ...data!,
+                  mappedColumns,
+                  data: mappedData
+                });
                 handleNext();
               }}
+
             />
           )}
 

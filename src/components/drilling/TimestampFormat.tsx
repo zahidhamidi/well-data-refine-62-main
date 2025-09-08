@@ -252,7 +252,7 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
         console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
 
         // Don’t overwrite parent data, just keep local formattedTable
-        onFormatComplete({ ...data });
+        onFormatComplete(postFormattedTable);
 
 
         worker.terminate();

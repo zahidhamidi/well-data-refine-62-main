@@ -6,17 +6,18 @@ import { ChannelBankItem } from './ChannelBank';
 type ColumnMappingProps = {
   data: DrillingData;
   channelBank: ChannelBankItem[];
+  savedState?: any;   // ✅ add savedState
+  onSaveState?: (state: any) => void; // ✅ add onSaveState
   onMappingComplete: (
     mappings: Array<{
       original: string;
       mapped: string;
       originalUnit: string;
       mappedUnit: string;
-    }>,
+    }> ,
     mappedData: any[]
   ) => void;
 };
-
 
 // Utility to normalize units
 const replaceUnit = (unit?: string): string | undefined => {
@@ -46,7 +47,7 @@ const replaceUnit = (unit?: string): string | undefined => {
   return unit;
 };
 
-export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMappingProps) => {
+export const ColumnMapping = ({ data, channelBank, savedState, onSaveState, onMappingComplete }: ColumnMappingProps) => {
   const safeHeaders = Array.isArray(data?.headers) ? data.headers : [];
   const safeUnits = Array.isArray(data?.units) ? data.units : [];
 
@@ -54,8 +55,13 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
     console.warn("⚠️ ColumnMapping: No headers received", data);
   }
 
-
   const [mappings, setMappings] = useState(() => {
+    // ✅ if savedState exists, restore it
+    if (savedState) {
+      return savedState;
+    }
+
+    // otherwise build from headers
     return safeHeaders.map((header, index) => {
       const headerLower = header.toLowerCase().trim();
       let matchedChannel = channelBank?.find(ch =>
@@ -90,11 +96,14 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
     if (updated.mapped === "TIME") updated.mappedUnit = "";
     newMappings[index] = updated;
     setMappings(newMappings);
+    onSaveState?.(newMappings);   // ✅ save to parent
   };
 
   const removeMapping = (index: number) => {
     const removedRow = mappings[index];
-    setMappings(prev => prev.filter((_, i) => i !== index));
+    const newMappings = mappings.filter((_, i) => i !== index);
+    setMappings(newMappings);
+    onSaveState?.(newMappings);   // ✅ save to parent
     setToast(`Removed row: "${removedRow.original}"`);
     setTimeout(() => setToast(null), 3000);
   };
@@ -126,9 +135,9 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
       return newRow;
     });
 
+    onSaveState?.(mappings);       // ✅ persist before completing
     onMappingComplete(finalMappings, mappedData);
   };
-
 
   const standardChannels = channelBank?.map(c => c.standardName) || [];
   const standardUnits = ["N/A", "ft", "m", "API", "ohm.m", "fraction", "g/cm3", "datetime", "sec",
