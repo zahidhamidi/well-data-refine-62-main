@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Calendar, Clock, ArrowRight } from "lucide-react";
+import { Calendar, Clock, ArrowRight, Info} from "lucide-react";
 import { DrillingData } from "./DrillingInterface";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,7 +18,7 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
   const [formattedDataPreview, setFormattedDataPreview] = useState<{ column: string; original: string; formatted: string }[]>([]);
   const [progress, setProgress] = useState(0);
   const [formattedTable, setFormattedTable] = useState<{ headers: string[]; data: any[] } | null>(null);
-
+  const [showInfo, setShowInfo] = useState(false);
   const workerRef = useRef<Worker | null>(null);
 
   // when local state changes, push it up
@@ -27,18 +27,20 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
   }, [selectedColumns, inputFormat]);
 
   const formatOptions = [
-    { label: "dd/MM/yyyy HH:mm:ss", value: "dd/MM/yyyy HH:mm:ss" },
-    { label: "MM/dd/yyyy HH:mm:ss", value: "MM/dd/yyyy HH:mm:ss" },
-    { label: "yyyy-MM-dd HH:mm:ss", value: "yyyy-MM-dd HH:mm:ss" },
-    { label: "ISO 8601", value: "yyyy-MM-dd'T'HH:mm:ss'Z'" },
-    { label: "yyyy/MM/dd HH:mm:ss", value: "yyyy/MM/dd HH:mm:ss" },
-    { label: "dd-MM-yyyy HH:mm:ss", value: "dd-MM-yyyy HH:mm:ss" },
-    { label: "UNIX Time (Seconds)", value: "unix-s" },
-    { label: "Elapsed Time (Seconds)", value: "elapsed-s" },
-    { label: "Elapsed Time (Minutes)", value: "elapsed-m" },
-    { label: "TIME_1900 (Days since 1900)", value: "time-1900-d" },
-    { label: "Elapsed Time from Midnight (Seconds)", value: "emdt-s" },
+    { label: "dd/MM/yyyy HH:mm:ss", value: "dd/MM/yyyy HH:mm:ss", description: "Day/Month/Year 24-hour time", example: "06/06/2024 13:45:30" },
+    { label: "MM/dd/yyyy HH:mm:ss", value: "MM/dd/yyyy HH:mm:ss", description: "Month/Day/Year 24-hour time", example: "06/07/2024 13:45:30" },
+    { label: "yyyy-MM-dd HH:mm:ss", value: "yyyy-MM-dd HH:mm:ss", description: "ISO-like Year-Month-Day 24-hour time", example: "2024-06-06 13:45:30" },
+    { label: "ISO 8601", value: "yyyy-MM-dd'T'HH:mm:ss'Z'", description: "Full ISO 8601 format", example: "2024-06-06T13:45:30Z" },
+    { label: "yyyy/MM/dd HH:mm:ss", value: "yyyy/MM/dd HH:mm:ss", description: "Year/Month/Day 24-hour time", example: "2024/06/06 13:45:30" },
+    { label: "dd-MM-yyyy HH:mm:ss", value: "dd-MM-yyyy HH:mm:ss", description: "Day-Month-Year 24-hour time", example: "06-06-2024 13:45:30" },
+    { label: "UNIX Time (Seconds)", value: "unix-s", description: "Seconds since 1970-01-01", example: "1717680000 → 06/06/2024 00:00:00" },
+    { label: "Elapsed Time (Seconds)", value: "elapsed-s", description: "Seconds offset from start well time", example: "3600 → +1 hour" },
+    { label: "Elapsed Time (Minutes)", value: "elapsed-m", description: "Minutes offset from start well time", example: "60 → +1 hour" },
+    { label: "TIME_1900 (Days since 1900)", value: "time-1900-d", description: "Excel-style days since 1900 (whole days)", example: "45460 → 06/06/2024" },
+    { label: "Elapsed Time from Midnight (Seconds)", value: "emdt-s", description: "Seconds since today’s midnight", example: "45000 → 12:30:00" },
+    { label: "Excel Serial DateTime (since 1900)", value: "excel-1900", description: "Excel serial with fractions of a day", example: "45460.059 → 06/06/2024 01:25:00" },
   ];
+
 
   // Detect format (same as you had)
   const detectFormat = (sampleValue: string): string | null => {
@@ -112,6 +114,13 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
               today.setHours(0, 0, 0, 0);
               parsedDate = new Date(today.getTime() + numericValue * 1000);
               break;
+            case "excel-1900":
+              const msSince1900Excel = numericValue * 24 * 60 * 60 * 1000;
+              // Excel wrongly counts 1900 as leap year → adjust if needed
+              const excelEpoch = new Date("1899-12-30T00:00:00Z"); 
+              parsedDate = new Date(excelEpoch.getTime() + msSince1900Excel);
+              break;
+
             default:
               parsedDate = parse(String(rawOriginal), formatValue, new Date());
               break;
@@ -221,7 +230,8 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
           return row; // already an object
         });
 
-        setFormattedTable({ headers: safeHeaders, data: safeRows });
+        setFormattedTable({ headers: safeHeaders, data: updatedRows });
+
         setIsFormatting(false);
 
         // Build a fully safe DrillingData object
@@ -241,7 +251,9 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
 
         console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
 
-        onFormatComplete(postFormattedTable);
+        // Don’t overwrite parent data, just keep local formattedTable
+        onFormatComplete({ ...data });
+
 
         worker.terminate();
         workerRef.current = null;
@@ -295,17 +307,27 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
             <h3 className="font-medium text-foreground mb-2 flex items-center">
               <Calendar className="w-5 h-5 mr-2" />
               Select Original Format
+              <button
+                type="button"
+                onClick={() => setShowInfo(true)}
+                className="ml-2 text-muted-foreground hover:text-foreground"
+              >
+                <Info className="w-4 h-4" />
+              </button>
             </h3>
             <Select onValueChange={handleInputFormatChange} value={inputFormat || ''} disabled={selectedColumns.length === 0}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Choose the original format..." />
               </SelectTrigger>
               <SelectContent>
-                {formatOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
+                {formatOptions
+                  .slice() // make a copy so we don’t mutate original
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
@@ -427,7 +449,7 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
                     <tr key={rIdx} className={rIdx % 2 === 0 ? "bg-background" : "bg-table-row-even"}>
                       {formattedTable.headers.map((h, cIdx) => (
                         <td key={cIdx} className="px-2 py-1 border border-border text-center">
-                          {row[cIdx] ?? ""}
+                          {typeof row === "object" && !Array.isArray(row) ? row[h] ?? "" : ""}
                         </td>
                       ))}
                     </tr>
@@ -439,6 +461,46 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
             )}
           </div>
         </div>
+        {showInfo && (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+            <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6">
+              <h2 className="text-xl font-bold mb-4">Timestamp Format Help</h2>
+
+              <table className="min-w-full border border-gray-300 text-sm mb-4">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border px-3 py-1 text-left">Format</th>
+                    <th className="border px-3 py-1 text-left">Description</th>
+                    <th className="border px-3 py-1 text-left">Example</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {formatOptions
+                    .slice()
+                    .sort((a, b) => a.label.localeCompare(b.label))
+                    .map((opt) => (
+                      <tr key={opt.value}>
+                        <td className="border px-3 py-1">{opt.label}</td>
+                        <td className="border px-3 py-1">{opt.description}</td>
+                        <td className="border px-3 py-1">{opt.example}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowInfo(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </div>
   );

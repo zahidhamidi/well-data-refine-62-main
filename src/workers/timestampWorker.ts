@@ -1,100 +1,74 @@
-/// <reference lib="webworker" />
-import { parse, format } from "date-fns";
+const pad = (n: number) => String(n).padStart(2, "0");
+const fmt = (d: Date) =>
+  `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
-type WorkerMessage = {
-  rows: any[];
-  headers: string[];
-  selectedColumns: string[];
-  inputFormat: string;
-  startWellTime?: string | Date;
-};
+function parseToDate(raw: any, format: string, startWellTime?: any): Date | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const str = String(raw).trim();
+  const numeric = Number(str);
 
-const OUTPUT_FORMAT = "dd/MM/yyyy HH:mm:ss";
-
-function toNumber(value: any) {
-  const n = Number(value);
-  return Number.isNaN(n) ? null : n;
-}
-
-function convertTimestamp(value: any, formatType: string, startWellTime?: string | Date) {
-  if (value === null || value === undefined || value === "") return value === "" ? "" : value;
-
-  try {
-    let date: Date | null = null;
-    const numeric = toNumber(value);
-
-    switch (formatType) {
+  if (!Number.isNaN(numeric)) {
+    switch (format) {
       case "unix-s":
-        if (numeric === null) return String(value);
-        date = new Date(numeric * 1000);
-        break;
-      case "elapsed-s":
-        if (numeric === null || !startWellTime) return String(value);
-        date = new Date(new Date(startWellTime).getTime() + numeric * 1000);
-        break;
-      case "elapsed-m":
-        if (numeric === null || !startWellTime) return String(value);
-        date = new Date(new Date(startWellTime).getTime() + numeric * 60 * 1000);
-        break;
-      case "time-1900-d":
-        if (numeric === null) return String(value);
-        date = new Date(1900, 0, 1);
-        date.setDate(date.getDate() + numeric);
-        break;
-      case "emdt-s":
-        if (numeric === null || !startWellTime) return String(value);
-        // elapsed from midnight -> use startWellTime as reference if provided, otherwise today
+        return new Date(numeric * 1000);
+      case "elapsed-s": {
         const base = startWellTime ? new Date(startWellTime) : new Date();
-        base.setHours(0, 0, 0, 0);
-        date = new Date(base.getTime() + numeric * 1000);
-        break;
-      case "dd/MM/yyyy HH:mm:ss":
-        date = parse(String(value), "dd/MM/yyyy HH:mm:ss", new Date());
-        break;
-      default:
-        // unknown format: return original
-        return String(value);
+        return new Date(base.getTime() + numeric * 1000);
+      }
+      case "elapsed-m": {
+        const base = startWellTime ? new Date(startWellTime) : new Date();
+        return new Date(base.getTime() + numeric * 60000);
+      }
+      case "time-1900-d": {
+        const ms = numeric * 86400000;
+        return new Date(new Date("1900-01-01T00:00:00Z").getTime() + ms);
+      }
+      case "excel-1900": {
+        const ms = numeric * 86400000;
+        return new Date(new Date("1899-12-30T00:00:00Z").getTime() + ms);
+      }
+      case "emdt-s": {
+        const midnight = new Date();
+        midnight.setHours(0, 0, 0, 0);
+        return new Date(midnight.getTime() + numeric * 1000);
+      }
     }
-
-    if (date && !isNaN(date.getTime())) {
-      return format(date, OUTPUT_FORMAT);
-    }
-    return String(value);
-  } catch {
-    return String(value);
   }
+
+  // fallback parse
+  const parsed = Date.parse(str);
+  return Number.isNaN(parsed) ? null : new Date(parsed);
 }
 
-self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+self.onmessage = (e: MessageEvent) => {
   const { rows, headers, selectedColumns, inputFormat, startWellTime } = e.data;
-  const total = rows.length;
-  const updatedRows: any[] = [];
 
-  for (let i = 0; i < total; i++) {
-    const row = rows[i];
-    // Build a new row-array (fast predictable layout)
-    const newRow: any[] = new Array(headers.length);
+  const selectedIdx = selectedColumns.map((c: string) => headers.indexOf(c)).filter((i) => i >= 0);
+  const outRows: any[] = [];
 
-    for (let colIndex = 0; colIndex < headers.length; colIndex++) {
-      const header = headers[colIndex];
+  for (let i = 0; i < rows.length; i++) {
+    // Always create a fresh copy so we don’t mutate original dataset
+    const row = Array.isArray(rows[i])
+      ? rows[i].map((cell: any) => (cell !== undefined ? String(cell) : ""))
+      : headers.map((h: string) => (rows[i] && rows[i][h] !== undefined ? String(rows[i][h]) : ""));
 
-      // prefer object key if row is object, otherwise assume array index
-      const raw = (row && typeof row === "object" && !Array.isArray(row)) ? (row[header]) : (Array.isArray(row) ? row[colIndex] : undefined);
 
-      if (selectedColumns.includes(header)) {
-        newRow[colIndex] = convertTimestamp(raw, inputFormat, startWellTime);
-      } else {
-        newRow[colIndex] = raw === undefined ? "" : raw;
+    for (const colIdx of selectedIdx) {
+      const raw = row[colIdx];
+      const d = parseToDate(raw, inputFormat, startWellTime);
+      if (d && !isNaN(d.getTime())) {
+        row[colIdx] = fmt(d); // ✅ overwrite with formatted string
       }
     }
 
-    updatedRows.push(newRow);
+    outRows.push(row);
 
-    // post progress every 500 rows (tweak as needed)
-    if ((i % 500) === 0) {
-      self.postMessage({ type: "progress", progress: Math.round((i / total) * 100) });
+    if (i % 100 === 0) {
+      (self as any).postMessage({ type: "progress", progress: Math.round((i / rows.length) * 100) });
     }
   }
 
-  self.postMessage({ type: "done", rows: updatedRows, headers });
+  (self as any).postMessage({ type: "done", progress: 100, rows: outRows, headers });
 };

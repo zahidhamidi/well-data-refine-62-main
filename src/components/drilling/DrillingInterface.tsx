@@ -171,13 +171,14 @@ export const DrillingInterface = () => {
           {currentStep === 2 && data?.dataType === "time" && (
             <TimestampFormat
               data={data}
-              savedState={timestampState}             // pass saved state
-              onSaveState={setTimestampState}         // let child update parent
+              savedState={timestampState}   // ✅ pass saved state
+              onSaveState={setTimestampState}  // ✅ child updates parent
               onFormatComplete={(postFormattedTable) => {
                 updateData(postFormattedTable);
               }}
             />
           )}
+
 
 
 
