@@ -394,13 +394,43 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
               <div>Original</div>
               <div>Formatted</div>
             </div>
-            {formattedDataPreview.map((item, index) => (
-              <div key={index} className="grid grid-cols-3 gap-2">
-                <div className="text-secondary-foreground">{item.column}</div>
-                <div className="text-muted-foreground">{item.original || "No data available"}</div>
-                <div className="text-success">{item.formatted}</div>
-              </div>
-            ))}
+            {selectedColumns.length > 1 ? (
+              // merge DATE + TIME into one preview row
+              (() => {
+                const dateCol = selectedColumns[0];
+                const timeCol = selectedColumns[1];
+
+                const dateIndex = data.headers.indexOf(dateCol);
+                const timeIndex = data.headers.indexOf(timeCol);
+
+                // just preview the first 2 rows
+                return data.data.slice(0, 2).map((row, idx) => {
+                  const dateRaw = Array.isArray(row) ? row[dateIndex] : (row as any)[dateCol];
+                  const timeRaw = Array.isArray(row) ? row[timeIndex] : (row as any)[timeCol];
+                  const merged = mergeDateTime(String(dateRaw ?? ""), String(timeRaw ?? ""));
+
+                  return (
+                    <div key={idx} className="grid grid-cols-3 gap-2">
+                      <div className="text-secondary-foreground">{`${dateCol}+${timeCol}`}</div>
+                      <div className="text-muted-foreground">
+                        {String(dateRaw ?? "")} {String(timeRaw ?? "")}
+                      </div>
+                      <div className="text-success">{merged}</div>
+                    </div>
+                  );
+                });
+              })()
+            ) : (
+              // default: one row per column
+              formattedDataPreview.map((item, index) => (
+                <div key={index} className="grid grid-cols-3 gap-2">
+                  <div className="text-secondary-foreground">{item.column}</div>
+                  <div className="text-muted-foreground">{item.original || "No data available"}</div>
+                  <div className="text-success">{item.formatted}</div>
+                </div>
+              ))
+            )}
+
           </div>
         </div>
       )}
