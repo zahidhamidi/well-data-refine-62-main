@@ -23,8 +23,9 @@ export type DrillingData = {
   wellName?: string;
   dataType?: 'depth' | 'time';
   originalLasHeader?: string;
-
-
+  rawData?: any[];          // ✅ keep untouched
+  formattedData?: any[];    // ✅ after timestamp formatting
+  mappedData?: any[];       // ✅ after column mapping
   mappedColumns?: Array<{
 
     original: string;
@@ -59,6 +60,8 @@ export const DrillingInterface = () => {
   const [dataOrigin, setDataOrigin] = useState<'ML' | 'GS'>('ML');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [formattedData, setFormattedData] = useState<DrillingData | null>(null);
+  const [preMappingData, setPreMappingData] = useState<DrillingData | null>(null);
+
 
 
 
@@ -68,7 +71,6 @@ export const DrillingInterface = () => {
       // ✅ apply formatted dataset before Column Mapping
       updateData(formattedData, true);
     }
-
     if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
@@ -76,10 +78,11 @@ export const DrillingInterface = () => {
 
 
 
+
   const handlePrevious = () => {
-    if (currentStep > 0) {
+    if (currentStep > 0 && currentStep !== 3) {
       setCurrentStep(currentStep - 1);
-    } else if (currentStep === 0) {
+    }  else if (currentStep === 0) {
       navigate("/ChannelMapping");
     }
   };
@@ -178,12 +181,13 @@ export const DrillingInterface = () => {
               data={data}
               savedState={timestampState}
               onSaveState={setTimestampState}
-              onFormatComplete={(formatted) => {
-                // ✅ store but don’t overwrite parent data yet
-                setFormattedData(formatted);
+              onFormatComplete={(postFormattedTable) => {
+                setFormattedData(postFormattedTable);      // ✅ hold formatted copy
+                setPreMappingData(postFormattedTable);     // ✅ snapshot before mapping
               }}
             />
           )}
+
 
 
 
@@ -212,23 +216,24 @@ export const DrillingInterface = () => {
           
 
 
-          {currentStep === 3 && data && (
-            <ColumnMapping 
-              data={data}
+          {currentStep === 3 && preMappingData && (
+            <ColumnMapping
+              data={preMappingData} // ✅ use safe pre-mapping snapshot
               channelBank={defaultChannels}
-              savedState={mappingState}              // pass saved state
-              onSaveState={setMappingState}          // let child update parent
+              savedState={mappingState}
+              onSaveState={setMappingState}
               onMappingComplete={(mappedColumns, mappedData) => {
                 setData({
-                  ...data!,
+                  ...preMappingData,
                   mappedColumns,
-                  data: mappedData
+                  mappedData,  // ✅ stored separately
                 });
                 handleNext();
               }}
-
             />
           )}
+
+
 
 
 
@@ -247,7 +252,7 @@ export const DrillingInterface = () => {
         <div className="flex justify-between mt-6">
           <button
             onClick={handlePrevious}
-            disabled={currentStep === 0}
+            disabled={currentStep === 0 || currentStep === 3}
             className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-secondary/80"
           >
             Previous

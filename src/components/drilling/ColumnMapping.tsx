@@ -140,9 +140,12 @@ export const ColumnMapping = ({ data, channelBank, savedState, onSaveState, onMa
       return newRow;
     });
 
-    onSaveState?.(mappings);       // ✅ persist before completing
-    onMappingComplete(finalMappings, mappedData);
+    onSaveState?.(mappings);
+
+    onMappingComplete(finalMappings, mappedData); // ✅ pass mapped data only
   };
+
+
 
 
   const standardChannels = channelBank?.map(c => c.standardName) || [];
