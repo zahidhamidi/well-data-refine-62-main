@@ -4,7 +4,23 @@ import { DrillingData } from "./DrillingInterface";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MultiSelect } from "@/components/ui/MultiSelect";
-import { parse, format, fromUnixTime } from "date-fns";
+import { parse, format, fromUnixTime, isMatch } from "date-fns";
+
+function mergeDateTime(dateRaw: string, timeRaw: string): string {
+    const dateNum = Number(dateRaw);
+    const base = new Date("1899-12-30T00:00:00Z"); // Excel 1900 system base
+    const dateObj = new Date(base.getTime() + dateNum * 86400000);
+
+    if (timeRaw) {
+      const [hh, mm, ss] = timeRaw.split(":").map(Number);
+      dateObj.setHours(hh || 0, mm || 0, ss || 0, 0);
+    }
+
+    // format always dd/MM/yyyy HH:mm:ss
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${pad(dateObj.getDate())}/${pad(dateObj.getMonth() + 1)}/${dateObj.getFullYear()} ${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(dateObj.getSeconds())}`;
+  }
+
 
 type TimestampFormatProps = {
   data: DrillingData;
@@ -32,7 +48,8 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
     { label: "yyyy-MM-dd HH:mm:ss", value: "yyyy-MM-dd HH:mm:ss", description: "ISO-like Year-Month-Day 24-hour time", example: "2024-06-06 13:45:30" },
     { label: "ISO 8601", value: "yyyy-MM-dd'T'HH:mm:ss'Z'", description: "Full ISO 8601 format", example: "2024-06-06T13:45:30Z" },
     { label: "yyyy/MM/dd HH:mm:ss", value: "yyyy/MM/dd HH:mm:ss", description: "Year/Month/Day 24-hour time", example: "2024/06/06 13:45:30" },
-    { label: "dd-MM-yyyy HH:mm:ss", value: "dd-MM-yyyy HH:mm:ss", description: "Day-Month-Year 24-hour time", example: "06-06-2024 13:45:30" },
+    { label: "dd-MM-yyyy HH:mm:ss", value: "dd-MM-yyyy HH:mm:ss", description: "Day-Month-Year 24-hour time", example: "06-12-2024 13:45:30" },
+    { label: "dd-MM-yyyy HH:mm:ss", value: "MM-dd-yyyy HH:mm:ss", description: "Month-Day-Year 24-hour time", example: "12-06-2024 13:45:30" },
     { label: "UNIX Time (Seconds)", value: "unix-s", description: "Seconds since 1970-01-01", example: "1717680000 → 06/06/2024 00:00:00" },
     { label: "Elapsed Time (Seconds)", value: "elapsed-s", description: "Seconds offset from start well time", example: "3600 → +1 hour" },
     { label: "Elapsed Time (Minutes)", value: "elapsed-m", description: "Minutes offset from start well time", example: "60 → +1 hour" },
@@ -44,26 +61,37 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
 
   // Detect format (same as you had)
   const detectFormat = (sampleValue: string): string | null => {
+    if (!sampleValue || sampleValue.trim() === "") return null;
+
     const numericValue = parseFloat(sampleValue);
+
+    // First handle numeric-based formats
     if (!isNaN(numericValue)) {
+      if (sampleValue.includes(".")) {
+        // fractional numbers → Excel style
+        if (numericValue > 30000 && numericValue < 60000) return "excel-1900";
+      }
       if (numericValue > 1000000000) return "unix-s";
-      if (numericValue < 100000 && numericValue > 0) return "elapsed-s";
       if (numericValue > 40000) return "time-1900-d";
-      if (numericValue > 0 && numericValue < 86400) return "emdt-s";
+      if (numericValue < 86400 && numericValue >= 0) return "emdt-s";
+      if (numericValue < 100000 && numericValue > 0) return "elapsed-s";
     }
-    const stringFormats = formatOptions.filter(opt => !opt.value.includes("-"));
-    for (const option of stringFormats) {
+
+    // Try string-based formats from formatOptions
+    for (const option of formatOptions) {
       try {
         const parsedDate = parse(sampleValue, option.value, new Date());
         if (!isNaN(parsedDate.getTime())) {
           return option.value;
         }
-      } catch (e) {
+      } catch {
         continue;
       }
     }
+
     return null;
   };
+
 
   // Preview generation (uses same safe-access logic you already used)
   const updatePreview = (columns: string[], formatValue: string) => {
@@ -178,6 +206,7 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
     };
   }, []);
 
+
   useEffect(() => {
     if (selectedColumns.length > 0 && inputFormat) {
       updatePreview(selectedColumns, inputFormat);
@@ -252,7 +281,12 @@ export const TimestampFormat = ({ data, savedState, onSaveState, onFormatComplet
         console.log("✅ Sending postFormattedTable to DrillingInterface:", postFormattedTable);
 
         // Don’t overwrite parent data, just keep local formattedTable
-        onFormatComplete(postFormattedTable);
+        onFormatComplete?.({
+          ...data,
+          headers: safeHeaders,
+          data: updatedRows,
+        });
+
 
 
         worker.terminate();

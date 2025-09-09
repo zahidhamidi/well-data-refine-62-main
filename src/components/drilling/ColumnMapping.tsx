@@ -49,7 +49,7 @@ const replaceUnit = (unit?: string): string | undefined => {
   return unit;
 };
 
-export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMappingProps) => {
+export const ColumnMapping = ({ data, channelBank, savedState, onSaveState, onMappingComplete }: ColumnMappingProps) => {
   const safeHeaders = Array.isArray(data?.headers) ? data.headers : [];
   const safeUnits = Array.isArray(data?.units) ? data.units : [];
 
@@ -103,14 +103,14 @@ export const ColumnMapping = ({ data, channelBank, onMappingComplete }: ColumnMa
     onSaveState?.(newMappings);   // ✅ save to parent
   };
 
-const removeMapping = (index: number) => {
-  const removedRow = mappings[index];
-  const newMappings = mappings.filter((_, i) => i !== index);
-  setMappings(newMappings);
-  onSaveState?.(newMappings);   // ✅ save to parent
-  setToast(`Removed row: "${removedRow.original}"`);
-  setTimeout(() => setToast(null), 3000);
-};
+  const removeMapping = (index: number) => {
+    const removedRow = mappings[index];
+    const newMappings = mappings.filter((_, i) => i !== index);
+    setMappings(newMappings);
+    onSaveState?.(newMappings);   // ✅ save to parent
+    setToast(`Removed row: "${removedRow.original}"`);
+    setTimeout(() => setToast(null), 3000);
+  };
 
 
   const handleComplete = () => {
@@ -140,6 +140,7 @@ const removeMapping = (index: number) => {
       return newRow;
     });
 
+    onSaveState?.(mappings);       // ✅ persist before completing
     onMappingComplete(finalMappings, mappedData);
   };
 

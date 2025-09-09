@@ -58,15 +58,22 @@ export const DrillingInterface = () => {
   const [dataType, setDataType] = useState<'depth' | 'time'>('depth');
   const [dataOrigin, setDataOrigin] = useState<'ML' | 'GS'>('ML');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [formattedData, setFormattedData] = useState<DrillingData | null>(null);
+
 
 
 
   const handleNext = () => {
-    if (currentStep < 4)  {
+    if (currentStep === 2 && formattedData) {
+      // ✅ apply formatted dataset before Column Mapping
+      updateData(formattedData, true);
+    }
+
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
-    // do nothing if currentStep === 3
   };
+
 
 
   const handlePrevious = () => {
@@ -171,11 +178,15 @@ export const DrillingInterface = () => {
               data={data}
               savedState={timestampState}
               onSaveState={setTimestampState}
-              onFormatComplete={(postFormattedTable) => {
-                updateData(postFormattedTable, true); // ✅ overwrite with formatted dataset
+              onFormatComplete={(formatted) => {
+                // ✅ store but don’t overwrite parent data yet
+                setFormattedData(formatted);
               }}
             />
           )}
+
+
+
 
 
 
